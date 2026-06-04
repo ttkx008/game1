@@ -1,0 +1,37 @@
+<!DOCTYPE html>
+<html><head><meta charset="UTF-8"><title>Test</title></head>
+<body>
+<div id="info">Loading...</div>
+<script>
+// 最小化测试: 确认 Three.js + WebGL 能工作
+</script>
+<script src="three_local.js"></script>
+<script>
+document.getElementById('info').textContent = 'Three.js ' + THREE.REVISION + ' loaded';
+
+try {
+  const scene = new THREE.Scene();
+  const camera = new THREE.PerspectiveCamera(75, window.innerWidth/window.innerHeight, 0.1, 1000);
+  const renderer = new THREE.WebGLRenderer();
+  renderer.setSize(window.innerWidth, window.innerHeight);
+  document.body.appendChild(renderer.domElement);
+
+  const geo = new THREE.BoxGeometry(1,1,1);
+  const mat = new THREE.MeshBasicMaterial({color: 0x00ff00});
+  const cube = new THREE.Mesh(geo, mat);
+  scene.add(cube);
+  camera.position.z = 3;
+
+  function animate() {
+    requestAnimationFrame(animate);
+    cube.rotation.x += 0.01;
+    cube.rotation.y += 0.01;
+    renderer.render(scene, camera);
+  }
+  animate();
+  document.getElementById('info').textContent += ' - WebGL OK!';
+} catch(e) {
+  document.getElementById('info').textContent += ' - ERROR: ' + e.message;
+}
+</script>
+</body></html>

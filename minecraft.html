@@ -55,6 +55,7 @@ canvas { display: block; width: 100vw; height: 100vh; }
   background: rgba(0,0,0,0.5); border-radius: 8px; padding: 10px 14px;
   font-family: 'Courier New', monospace; font-size: 13px; color: #e0e0e0;
   line-height: 1.6; border: 1px solid rgba(255,255,255,0.1);
+  display: none;
 }
 #debugInfo .label { color: #aaa; }
 #debugInfo .value { color: #fff; }
@@ -82,6 +83,7 @@ canvas { display: block; width: 100vw; height: 100vh; }
   border-radius: 6px; display: flex; flex-direction: column;
   align-items: center; justify-content: center;
   background: rgba(0,0,0,0.5); position: relative; transition: all 0.15s;
+  cursor: pointer; pointer-events: auto;
 }
 #hotbar .slot.active {
   border-color: #fff; background: rgba(255,255,255,0.15);
@@ -93,6 +95,11 @@ canvas { display: block; width: 100vw; height: 100vh; }
 #hotbar .slot .slot-num {
   position: absolute; top: 2px; left: 5px;
   font-size: 10px; color: rgba(255,255,255,0.6); font-weight: bold;
+}
+#hotbar .slot .slot-count {
+  position: absolute; bottom: 2px; right: 4px;
+  font-size: 11px; color: #fff; font-weight: bold;
+  text-shadow: 1px 1px 2px rgba(0,0,0,0.8);
 }
 #hotbar .slot .slot-name {
   font-size: 9px; color: rgba(255,255,255,0.7); white-space: nowrap;
@@ -119,11 +126,154 @@ canvas { display: block; width: 100vw; height: 100vh; }
 /* Pause overlay */
 #pauseOverlay {
   position: fixed; top: 0; left: 0; width: 100%; height: 100%;
-  background: rgba(0,0,0,0.7); display: none; flex-direction: column;
+  background: rgba(0,0,0,0.8); display: none; flex-direction: column;
   align-items: center; justify-content: center; z-index: 500;
+  pointer-events: auto;
 }
-#pauseOverlay h2 { color: #fff; font-size: 36px; margin-bottom: 16px; }
-#pauseOverlay p { color: #aaa; font-size: 16px; }
+#pauseOverlay h2 { color: #fff; font-size: 36px; margin-bottom: 24px; }
+#pauseOverlay .menu-btn {
+  display: block; width: 220px; padding: 12px 0; margin: 6px 0;
+  background: rgba(50,205,50,0.15); border: 1px solid rgba(50,205,50,0.4);
+  border-radius: 8px; color: #90EE90; font-size: 16px; cursor: pointer;
+  transition: all 0.15s; text-align: center;
+}
+#pauseOverlay .menu-btn:hover {
+  background: rgba(50,205,50,0.3); border-color: #32CD32; color: #fff;
+}
+#pauseOverlay .menu-btn.danger {
+  border-color: rgba(255,80,80,0.4); color: #ff8888;
+  background: rgba(255,80,80,0.1);
+}
+#pauseOverlay .menu-btn.danger:hover {
+  background: rgba(255,80,80,0.3); border-color: #ff5555; color: #fff;
+}
+
+/* Settings Panel */
+#settingsPanel {
+  position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%);
+  background: rgba(20,20,30,0.95); border: 1px solid rgba(50,205,50,0.3);
+  border-radius: 12px; padding: 28px 36px; z-index: 600;
+  color: #ccc; min-width: 360px; display: none; pointer-events: auto;
+}
+#settingsPanel h3 { color: #32CD32; font-size: 20px; margin-bottom: 18px; text-align: center; }
+#settingsPanel .setting-row {
+  display: flex; justify-content: space-between; align-items: center;
+  padding: 8px 0; border-bottom: 1px solid rgba(255,255,255,0.05);
+}
+#settingsPanel .setting-row label { font-size: 14px; color: #ccc; }
+#settingsPanel .setting-row input[type="range"] { width: 140px; accent-color: #32CD32; }
+#settingsPanel .setting-row .val { font-size: 13px; color: #90EE90; min-width: 32px; text-align: right; }
+#settingsPanel .toggle-btn {
+  background: rgba(50,205,50,0.15); border: 1px solid rgba(50,205,50,0.3);
+  border-radius: 4px; color: #90EE90; padding: 4px 12px; cursor: pointer; font-size: 13px;
+}
+#settingsPanel .toggle-btn.active { background: rgba(50,205,50,0.4); color: #fff; }
+#settingsPanel .close-btn {
+  display: block; margin: 16px auto 0; padding: 8px 24px;
+  background: rgba(50,205,50,0.15); border: 1px solid rgba(50,205,50,0.4);
+  border-radius: 6px; color: #90EE90; font-size: 14px; cursor: pointer;
+}
+#settingsPanel .close-btn:hover { background: rgba(50,205,50,0.3); }
+
+/* Inventory Screen */
+#inventoryScreen {
+  position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+  background: rgba(0,0,0,0.75); display: none; z-index: 400;
+  flex-direction: column; align-items: center; justify-content: center;
+  pointer-events: auto;
+}
+#inventoryScreen .inv-title {
+  color: #fff; font-size: 22px; margin-bottom: 16px; font-weight: bold;
+}
+#inventoryGrid {
+  background: rgba(30,30,40,0.9); border: 2px solid rgba(255,255,255,0.2);
+  border-radius: 10px; padding: 16px; display: flex; flex-direction: column; gap: 6px;
+}
+#inventoryGrid .inv-row { display: flex; gap: 6px; }
+#inventoryGrid .inv-slot {
+  width: 52px; height: 52px; border: 2px solid rgba(255,255,255,0.15);
+  border-radius: 6px; background: rgba(0,0,0,0.4); display: flex;
+  flex-direction: column; align-items: center; justify-content: center;
+  position: relative; cursor: pointer; transition: all 0.1s;
+}
+#inventoryGrid .inv-slot:hover { border-color: rgba(255,255,255,0.4); background: rgba(255,255,255,0.08); }
+#inventoryGrid .inv-slot .block-preview { width: 30px; height: 30px; border-radius: 4px; }
+#inventoryGrid .inv-slot .slot-count {
+  position: absolute; bottom: 2px; right: 3px;
+  font-size: 11px; color: #fff; font-weight: bold;
+  text-shadow: 1px 1px 2px rgba(0,0,0,0.8);
+}
+#inventoryGrid .inv-slot .slot-num {
+  position: absolute; top: 1px; left: 3px; font-size: 9px; color: rgba(255,255,255,0.4);
+}
+.inv-separator {
+  height: 2px; background: rgba(255,255,255,0.1); margin: 4px 0;
+}
+#invCursorItem {
+  position: fixed; pointer-events: none; z-index: 410; width: 40px; height: 40px;
+  border-radius: 4px; display: none; opacity: 0.85;
+}
+
+/* Tooltip */
+#tooltip {
+  position: fixed; pointer-events: none; z-index: 420;
+  background: rgba(20,20,30,0.92); border: 1px solid rgba(255,255,255,0.2);
+  border-radius: 4px; padding: 4px 8px; color: #fff; font-size: 13px;
+  white-space: nowrap; display: none;
+}
+
+/* XP Bar */
+#xpBar {
+  position: absolute; bottom: 82px; left: 50%; transform: translateX(-50%);
+  width: 364px; height: 8px; background: rgba(0,0,0,0.5);
+  border-radius: 4px; overflow: hidden; border: 1px solid rgba(255,255,255,0.1);
+}
+#xpFill {
+  height: 100%; background: linear-gradient(90deg, #7CFC00, #32CD32);
+  width: 0%; transition: width 0.3s; border-radius: 4px;
+}
+#xpLevel {
+  position: absolute; bottom: 92px; left: 50%; transform: translateX(-50%);
+  color: #7CFC00; font-size: 12px; font-weight: bold;
+  text-shadow: 1px 1px 3px rgba(0,0,0,0.8);
+}
+
+/* Hunger Bar */
+#hungerBar {
+  position: absolute; bottom: 24px; right: 20px;
+  display: flex; gap: 2px; align-items: center;
+}
+#hungerBar .hunger-icon {
+  width: 14px; height: 14px; border-radius: 2px;
+  transition: all 0.2s;
+}
+
+/* Block Break Overlay */
+#breakOverlay {
+  position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
+  width: 48px; height: 48px; pointer-events: none; display: none;
+  border: 2px solid rgba(255,255,255,0.3); border-radius: 4px;
+}
+#breakCrack {
+  width: 100%; height: 100%; border-radius: 4px;
+  background: repeating-conic-gradient(rgba(0,0,0,0.3) 0% 25%, transparent 0% 50%) 0 0 / 8px 8px;
+  opacity: 0; transition: opacity 0.1s;
+}
+
+/* Notifications */
+#notifications {
+  position: absolute; top: 50px; left: 50%; transform: translateX(-50%);
+  display: flex; flex-direction: column; align-items: center; gap: 6px;
+  z-index: 100; pointer-events: none;
+}
+.notification {
+  background: rgba(0,0,0,0.7); border: 1px solid rgba(255,255,255,0.15);
+  border-radius: 6px; padding: 6px 16px; color: #fff; font-size: 14px;
+  animation: notifIn 0.3s ease-out, notifOut 0.4s ease-in 2s forwards;
+  white-space: nowrap;
+}
+@keyframes notifIn { from { opacity: 0; transform: translateY(-10px); } to { opacity: 1; transform: translateY(0); } }
+@keyframes notifOut { to { opacity: 0; transform: translateY(-10px); } }
 
 /* Touch controls */
 #touchControls {
@@ -166,8 +316,10 @@ canvas { display: block; width: 100vw; height: 100vh; }
     <div class="row"><span class="key">空格</span><span>跳跃</span></div>
     <div class="row"><span class="key">左键</span><span>放置方块</span></div>
     <div class="row"><span class="key">右键</span><span>破坏方块</span></div>
-    <div class="row"><span class="key">1-6</span><span>选择方块</span></div>
+    <div class="row"><span class="key">1-9</span><span>选择方块</span></div>
+    <div class="row"><span class="key">E</span><span>打开背包</span></div>
     <div class="row"><span class="key">滚轮</span><span>切换方块</span></div>
+    <div class="row"><span class="key">Shift</span><span>冲刺</span></div>
     <div class="row"><span class="key">ESC</span><span>暂停</span></div>
   </div>
 </div>
@@ -188,20 +340,68 @@ canvas { display: block; width: 100vw; height: 100vh; }
     <div><span class="key">空格</span> 跳跃</div>
     <div><span class="key">左键</span> 放置方块</div>
     <div><span class="key">右键</span> 破坏方块</div>
-    <div><span class="key">1-6</span> 选择方块</div>
+    <div><span class="key">1-9</span> 选择方块</div>
+    <div><span class="key">E</span> 打开背包</div>
     <div><span class="key">滚轮</span> 切换方块</div>
+    <div><span class="key">Shift</span> 冲刺</div>
     <div><span class="key">ESC</span> 暂停</div>
   </div>
   <div id="blockName">草方块</div>
+  <div id="xpLevel">Lv.0</div>
+  <div id="xpBar"><div id="xpFill"></div></div>
   <div id="hotbar"></div>
+  <div id="hungerBar"></div>
   <div id="crosshair"></div>
+  <div id="breakOverlay"><div id="breakCrack"></div></div>
+  <div id="notifications"></div>
 </div>
 
 <!-- Pause -->
 <div id="pauseOverlay">
   <h2>⏸ 游戏暂停</h2>
-  <p>按 ESC 继续游戏</p>
+  <button class="menu-btn" id="btnResume">▶ 继续游戏</button>
+  <button class="menu-btn" id="btnSettings">⚙ 设置</button>
+  <button class="menu-btn" id="btnSaveGame">💾 保存游戏</button>
+  <button class="menu-btn" id="btnLoadGame">📂 加载游戏</button>
+  <button class="menu-btn danger" id="btnBackTitle">🏠 返回标题</button>
 </div>
+
+<!-- Settings Panel -->
+<div id="settingsPanel">
+  <h3>⚙ 设置</h3>
+  <div class="setting-row">
+    <label>渲染距离</label>
+    <input type="range" id="setRenderDist" min="3" max="8" value="6">
+    <span class="val" id="renderDistVal">6</span>
+  </div>
+  <div class="setting-row">
+    <label>鼠标灵敏度</label>
+    <input type="range" id="setSensitivity" min="1" max="10" value="5">
+    <span class="val" id="sensitivityVal">5</span>
+  </div>
+  <div class="setting-row">
+    <label>音乐音量</label>
+    <input type="range" id="setMusicVol" min="0" max="10" value="5">
+    <span class="val" id="musicVolVal">5</span>
+  </div>
+  <div class="setting-row">
+    <label>显示FPS</label>
+    <button class="toggle-btn active" id="toggleFPS">开</button>
+  </div>
+  <div class="setting-row">
+    <label>显示调试信息</label>
+    <button class="toggle-btn" id="toggleDebug">关</button>
+  </div>
+  <button class="close-btn" id="closeSettings">关闭</button>
+</div>
+
+<!-- Inventory Screen -->
+<div id="inventoryScreen">
+  <div class="inv-title">📦 背包</div>
+  <div id="inventoryGrid"></div>
+</div>
+<div id="invCursorItem"></div>
+<div id="tooltip"></div>
 
 <!-- Touch Controls -->
 <div id="touchControls">
@@ -216,13 +416,16 @@ canvas { display: block; width: 100vw; height: 100vh; }
 // ========== CONSTANTS ==========
 const CHUNK_SIZE = 16;
 const WORLD_HEIGHT = 64;
-const RENDER_DISTANCE = 6;
 const WATER_LEVEL = 12;
 const GRAVITY = -25;
 const JUMP_FORCE = 9;
 const MOVE_SPEED = 5.5;
+const SPRINT_MULT = 1.5;
 const PLAYER_HEIGHT = 1.7;
 const PLAYER_WIDTH = 0.3;
+const INVENTORY_SIZE = 36; // 9 hotbar + 27 main
+const HOTBAR_SIZE = 9;
+const AUTOSAVE_INTERVAL = 60000;
 
 // ========== BLOCK TYPES ==========
 const BLOCKS = {
@@ -235,19 +438,32 @@ const BLOCKS = {
   6: { name: '木头', color: 0x6B4226, top: 0x7D4E2B, side: 0x6B4226, bottom: 0x5A3720 },
   7: { name: '树叶', color: 0x2E8B2E, transparent: true },
   8: { name: '雪', color: 0xF0F0F0, top: 0xFFFFFF, side: 0xF0F0F0, bottom: 0xE8E8E8 },
+  9: { name: '圆石', color: 0x777777, top: 0x888888, side: 0x777777, bottom: 0x666666 },
+  10: { name: '食物', color: 0xCC4444, top: 0xDD5555, side: 0xCC4444, bottom: 0xBB3333 },
 };
-const HOTBAR_BLOCKS = [1, 2, 3, 4, 6, 7];
+const PLACEABLE_BLOCKS = [1, 2, 3, 4, 6, 7, 8, 9, 10];
+const BLOCK_HARDNESS = { 1: 0.8, 2: 0.5, 3: 1.2, 4: 0.6, 6: 0.9, 7: 0.3, 8: 0.4, 9: 1.0, 10: 0.3 };
+const BLOCK_XP = { 1: 1, 2: 1, 3: 3, 4: 1, 6: 2, 7: 1, 8: 1, 9: 3, 10: 0 };
 
 // ========== GLOBALS ==========
 let scene, camera, renderer, clock;
 let chunks = {};
 let entities = [];
+let renderDistance = 6;
 let player = {
   x: 8, y: 30, z: 8,
   vx: 0, vy: 0, vz: 0,
   onGround: false,
   yaw: 0, pitch: 0,
   selectedSlot: 0,
+  sprint: false,
+  // Inventory: array of { blockId, count } or null
+  inventory: new Array(INVENTORY_SIZE).fill(null),
+  // XP
+  xp: 0, xpLevel: 0, xpToNext: 10,
+  // Hunger
+  hunger: 20, maxHunger: 20,
+  hungerTick: 0,
 };
 let keys = {};
 let paused = false;
@@ -255,6 +471,60 @@ let gameStarted = false;
 let frameCount = 0;
 let fpsTime = 0;
 let lastTime = 0;
+let showFPS = true;
+let showDebug = false;
+let mouseSensitivity = 0.002;
+let musicVolume = 5;
+
+// Breaking
+let breaking = false;
+let breakTarget = null;
+let breakProgress = 0;
+
+// Inventory UI
+let inventoryOpen = false;
+let cursorItem = null; // { blockId, count } or null
+let dragSourceSlot = -1;
+
+// Settings
+let settings = {
+  renderDistance: 6,
+  sensitivity: 5,
+  musicVolume: 5,
+  showFPS: true,
+  showDebug: false,
+};
+
+// Modified blocks tracking for save/load
+let modifiedBlocks = {}; // "x,y,z" -> blockType (0 = removed)
+
+// Audio
+let audioCtx = null;
+function getAudioCtx() {
+  if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+  return audioCtx;
+}
+
+function playSound(freq, dur, type) {
+  try {
+    const ctx = getAudioCtx();
+    const osc = ctx.createOscillator();
+    const gain = ctx.createGain();
+    osc.type = type || 'square';
+    osc.frequency.setValueAtTime(freq, ctx.currentTime);
+    gain.gain.setValueAtTime(0.1, ctx.currentTime);
+    gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + dur);
+    osc.connect(gain);
+    gain.connect(ctx.destination);
+    osc.start(ctx.currentTime);
+    osc.stop(ctx.currentTime + dur);
+  } catch(e) {}
+}
+
+function playBreakSound() { playSound(200, 0.15, 'square'); playSound(150, 0.1, 'square'); }
+function playPlaceSound() { playSound(400, 0.1, 'sine'); }
+function playCollectSound() { playSound(600, 0.08, 'sine'); playSound(800, 0.08, 'sine'); }
+function playSaveSound() { playSound(500, 0.1, 'sine'); playSound(700, 0.15, 'sine'); }
 
 // ========== PERLIN NOISE ==========
 const perlinGrad = [];
@@ -329,29 +599,26 @@ class Chunk {
 
         for (let y = 0; y <= h; y++) {
           if (y === 0) {
-            this.setBlock(lx, y, lz, 3); // stone at bottom
+            this.setBlock(lx, y, lz, 3);
           } else if (y < h - 3) {
-            this.setBlock(lx, y, lz, 3); // stone
+            this.setBlock(lx, y, lz, 3);
           } else if (y < h) {
-            this.setBlock(lx, y, lz, 2); // dirt
+            this.setBlock(lx, y, lz, 2);
           } else {
-            // top layer
             if (h > 25) {
-              this.setBlock(lx, y, lz, 8); // snow
+              this.setBlock(lx, y, lz, 8);
             } else if (h < WATER_LEVEL + 1) {
-              this.setBlock(lx, y, lz, 4); // sand near water
+              this.setBlock(lx, y, lz, 4);
             } else {
-              this.setBlock(lx, y, lz, 1); // grass
+              this.setBlock(lx, y, lz, 1);
             }
           }
         }
 
-        // Water
         for (let y = h + 1; y <= WATER_LEVEL; y++) {
           this.setBlock(lx, y, lz, 5);
         }
 
-        // Trees
         if (h > WATER_LEVEL + 2 && h < 24 && Math.random() < 0.02) {
           this.placeTree(lx, h + 1, lz);
         }
@@ -363,14 +630,11 @@ class Chunk {
     if (x < 2 || x >= CHUNK_SIZE - 2 || z < 2 || z >= CHUNK_SIZE - 2) return;
     const trunkH = 4 + Math.floor(Math.random() * 3);
 
-    // Trunk
     for (let ty = 0; ty < trunkH; ty++) {
       if (y + ty < WORLD_HEIGHT) this.setBlock(x, y + ty, z, 6);
     }
 
-    // Leaves - layered canopy
     const leafBase = y + trunkH - 2;
-    // Bottom layer (5x5)
     for (let dx = -2; dx <= 2; dx++) {
       for (let dz = -2; dz <= 2; dz++) {
         if (dx === 0 && dz === 0) continue;
@@ -381,7 +645,6 @@ class Chunk {
         }
       }
     }
-    // Middle layer (3x3)
     for (let dx = -1; dx <= 1; dx++) {
       for (let dz = -1; dz <= 1; dz++) {
         const ly = leafBase + 1;
@@ -390,7 +653,6 @@ class Chunk {
         }
       }
     }
-    // Top layer (cross)
     for (let dx = -1; dx <= 1; dx++) {
       for (let dz = -1; dz <= 1; dz++) {
         if (Math.abs(dx) + Math.abs(dz) > 1) continue;
@@ -400,7 +662,6 @@ class Chunk {
         }
       }
     }
-    // Crown
     const ly = leafBase + 3;
     if (ly < WORLD_HEIGHT) this.setBlock(x, ly, z, 7);
   }
@@ -445,7 +706,6 @@ class Chunk {
             if (nx >= 0 && nx < CHUNK_SIZE && ny >= 0 && ny < WORLD_HEIGHT && nz >= 0 && nz < CHUNK_SIZE) {
               neighbor = this.getBlock(nx, ny, nz);
             } else {
-              // Cross-chunk: check if neighbor chunk exists and get its block
               const ncx = Math.floor((wx0 + nx) / CHUNK_SIZE);
               const ncz = Math.floor((wz0 + nz) / CHUNK_SIZE);
               const ncKey = ncx + ',' + ncz;
@@ -468,7 +728,6 @@ class Chunk {
             const faceIdx = f.dir[1] === 1 ? 0 : f.dir[1] === -1 ? 1 : f.dir[0] === 1 ? 2 : f.dir[0] === -1 ? 3 : f.dir[2] === 1 ? 4 : 5;
             const shade = lightMap[faceIdx] || 0.7;
 
-            // Color
             let color;
             if (fi === 2 && bdef.top) color = new THREE.Color(bdef.top);
             else if (fi === 3) color = new THREE.Color(bdef.bottom || bdef.color);
@@ -498,7 +757,6 @@ class Chunk {
       }
     }
 
-    // Solid mesh
     if (positions.length > 0) {
       const geo = new THREE.BufferGeometry();
       geo.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3));
@@ -510,7 +768,6 @@ class Chunk {
       scene.add(this.mesh);
     }
 
-    // Water mesh
     if (wPositions.length > 0) {
       const geo = new THREE.BufferGeometry();
       geo.setAttribute('position', new THREE.Float32BufferAttribute(wPositions, 3));
@@ -533,21 +790,18 @@ class Robot {
     this.changeTimer = Math.random() * 3;
     this.walkPhase = 0;
 
-    // Body
     const bodyGeo = new THREE.BoxGeometry(0.6, 0.7, 0.4);
     const bodyMat = new THREE.MeshLambertMaterial({ color: 0x4488CC });
     this.body = new THREE.Mesh(bodyGeo, bodyMat);
     this.body.position.y = 0.35;
     this.group.add(this.body);
 
-    // Head
     const headGeo = new THREE.BoxGeometry(0.4, 0.4, 0.4);
     const headMat = new THREE.MeshLambertMaterial({ color: 0x66AADD });
     this.head = new THREE.Mesh(headGeo, headMat);
     this.head.position.y = 0.9;
     this.group.add(this.head);
 
-    // Eyes
     const eyeGeo = new THREE.BoxGeometry(0.08, 0.08, 0.05);
     const eyeMat = new THREE.MeshBasicMaterial({ color: 0xFF4444 });
     const leftEye = new THREE.Mesh(eyeGeo, eyeMat);
@@ -557,21 +811,18 @@ class Robot {
     rightEye.position.set(0.1, 0.92, 0.2);
     this.group.add(rightEye);
 
-    // Antenna
     const antennaGeo = new THREE.BoxGeometry(0.05, 0.2, 0.05);
     const antennaMat = new THREE.MeshLambertMaterial({ color: 0xFFAA00 });
     const antenna = new THREE.Mesh(antennaGeo, antennaMat);
     antenna.position.y = 1.2;
     this.group.add(antenna);
 
-    // Antenna tip
     const tipGeo = new THREE.BoxGeometry(0.1, 0.1, 0.1);
     const tipMat = new THREE.MeshBasicMaterial({ color: 0xFF0000 });
     this.tip = new THREE.Mesh(tipGeo, tipMat);
     this.tip.position.y = 1.35;
     this.group.add(this.tip);
 
-    // Legs
     const legGeo = new THREE.BoxGeometry(0.15, 0.3, 0.15);
     const legMat = new THREE.MeshLambertMaterial({ color: 0x3366AA });
     this.leftLeg = new THREE.Mesh(legGeo, legMat);
@@ -597,16 +848,13 @@ class Robot {
     this.group.position.z += this.vz * dt;
     this.group.rotation.y = Math.atan2(this.vx, this.vz);
 
-    // Walk animation
     this.walkPhase += dt * 8;
     this.leftLeg.position.y = 0.15 + Math.sin(this.walkPhase) * 0.05;
     this.rightLeg.position.y = 0.15 - Math.sin(this.walkPhase) * 0.05;
     this.head.position.y = 0.9 + Math.abs(Math.sin(this.walkPhase)) * 0.03;
 
-    // Antenna blink
     this.tip.material.color.setHex(Math.random() < 0.3 ? 0xFF0000 : 0x880000);
 
-    // Stay on ground
     const gx = Math.floor(this.group.position.x);
     const gz = Math.floor(this.group.position.z);
     const groundY = getTerrainHeight(gx, gz);
@@ -648,7 +896,6 @@ function setBlock(x, y, z, type) {
   chunk.setBlock(lx, y, lz, type);
   chunk.dirty = true;
 
-  // Mark adjacent chunks dirty
   if (lx === 0) { const c = chunks[getChunkKey(cx-1, cz)]; if (c) c.dirty = true; }
   if (lx === CHUNK_SIZE-1) { const c = chunks[getChunkKey(cx+1, cz)]; if (c) c.dirty = true; }
   if (lz === 0) { const c = chunks[getChunkKey(cx, cz-1)]; if (c) c.dirty = true; }
@@ -720,6 +967,246 @@ function checkCollision(x, y, z, w, h) {
   return false;
 }
 
+// ========== INVENTORY SYSTEM ==========
+function initInventory() {
+  // Give player 64 of each placeable block
+  for (let i = 0; i < PLACEABLE_BLOCKS.length && i < INVENTORY_SIZE; i++) {
+    player.inventory[i] = { blockId: PLACEABLE_BLOCKS[i], count: 64 };
+  }
+}
+
+function addToInventory(blockId, count) {
+  // First try to stack with existing
+  for (let i = 0; i < INVENTORY_SIZE; i++) {
+    const slot = player.inventory[i];
+    if (slot && slot.blockId === blockId && slot.count < 64) {
+      const canAdd = Math.min(count, 64 - slot.count);
+      slot.count += canAdd;
+      count -= canAdd;
+      if (count <= 0) return true;
+    }
+  }
+  // Then find empty slots
+  for (let i = 0; i < INVENTORY_SIZE; i++) {
+    if (!player.inventory[i]) {
+      const canAdd = Math.min(count, 64);
+      player.inventory[i] = { blockId, count: canAdd };
+      count -= canAdd;
+      if (count <= 0) return true;
+    }
+  }
+  return count <= 0;
+}
+
+function removeFromSlot(slotIndex, count) {
+  const slot = player.inventory[slotIndex];
+  if (!slot) return false;
+  slot.count -= count;
+  if (slot.count <= 0) player.inventory[slotIndex] = null;
+  return true;
+}
+
+function getSelectedBlock() {
+  const slot = player.inventory[player.selectedSlot];
+  return slot ? slot.blockId : 0;
+}
+
+// ========== SAVE / LOAD ==========
+function saveGame() {
+  const saveData = {
+    version: 1,
+    player: {
+      x: player.x, y: player.y, z: player.z,
+      yaw: player.yaw, pitch: player.pitch,
+      selectedSlot: player.selectedSlot,
+      xp: player.xp, xpLevel: player.xpLevel, xpToNext: player.xpToNext,
+      hunger: player.hunger,
+    },
+    inventory: player.inventory.map(s => s ? { blockId: s.blockId, count: s.count } : null),
+    modifiedBlocks: modifiedBlocks,
+    settings: settings,
+  };
+  try {
+    localStorage.setItem('voxel_save', JSON.stringify(saveData));
+    showNotification('💾 游戏已保存！');
+    playSaveSound();
+  } catch(e) {
+    showNotification('❌ 保存失败！');
+  }
+}
+
+function loadGame() {
+  try {
+    const raw = localStorage.getItem('voxel_save');
+    if (!raw) { showNotification('❌ 没有找到存档'); return false; }
+    const saveData = JSON.parse(raw);
+    if (!saveData || !saveData.version) { showNotification('❌ 存档数据无效'); return false; }
+
+    // Restore player state
+    Object.assign(player, saveData.player);
+    player.vx = 0; player.vy = 0; player.vz = 0;
+    player.onGround = false;
+    player.sprint = false;
+
+    // Restore inventory
+    player.inventory = saveData.inventory.map(s => s ? { blockId: s.blockId, count: s.count } : null);
+    while (player.inventory.length < INVENTORY_SIZE) player.inventory.push(null);
+
+    // Restore modified blocks
+    modifiedBlocks = saveData.modifiedBlocks || {};
+    for (const key in modifiedBlocks) {
+      const [xs, ys, zs] = key.split(',').map(Number);
+      const bx = Math.floor(xs), by = Math.floor(ys), bz = Math.floor(zs);
+      setBlock(bx, by, bz, modifiedBlocks[key]);
+    }
+
+    // Restore settings
+    if (saveData.settings) {
+      Object.assign(settings, saveData.settings);
+      applySettings();
+    }
+
+    showNotification('📂 游戏已加载！');
+    playCollectSound();
+    return true;
+  } catch(e) {
+    showNotification('❌ 加载失败！');
+    return false;
+  }
+}
+
+function hasSave() {
+  return !!localStorage.getItem('voxel_save');
+}
+
+let autoSaveTimer = 0;
+
+// ========== NOTIFICATIONS ==========
+function showNotification(text) {
+  const container = document.getElementById('notifications');
+  const el = document.createElement('div');
+  el.className = 'notification';
+  el.textContent = text;
+  container.appendChild(el);
+  setTimeout(() => { if (el.parentNode) el.parentNode.removeChild(el); }, 2500);
+}
+
+// ========== HUNGER ==========
+function updateHungerUI() {
+  const bar = document.getElementById('hungerBar');
+  bar.innerHTML = '';
+  for (let i = 0; i < 10; i++) {
+    const icon = document.createElement('div');
+    icon.className = 'hunger-icon';
+    const hungerAtThisIcon = player.hunger - i * 2;
+    if (hungerAtThisIcon >= 2) {
+      icon.style.background = '#CC4444';
+    } else if (hungerAtThisIcon >= 1) {
+      icon.style.background = '#883333';
+    } else {
+      icon.style.background = '#333';
+    }
+    bar.appendChild(icon);
+  }
+}
+
+// ========== XP ==========
+function addXP(amount) {
+  player.xp += amount;
+  while (player.xp >= player.xpToNext) {
+    player.xp -= player.xpToNext;
+    player.xpLevel++;
+    player.xpToNext = Math.floor(10 * Math.pow(1.5, player.xpLevel));
+    showNotification('⬆️ 升级到 Lv.' + player.xpLevel + '!');
+  }
+  updateXPUI();
+}
+
+function updateXPUI() {
+  document.getElementById('xpFill').style.width = ((player.xp / player.xpToNext) * 100) + '%';
+  document.getElementById('xpLevel').textContent = 'Lv.' + player.xpLevel;
+}
+
+// ========== SETTINGS ==========
+function applySettings() {
+  renderDistance = settings.renderDistance;
+  mouseSensitivity = settings.sensitivity * 0.001;
+  musicVolume = settings.musicVolume;
+  showFPS = settings.showFPS;
+  showDebug = settings.showDebug;
+
+  document.getElementById('debugInfo').style.display = showDebug ? 'block' : 'none';
+  document.getElementById('controlsHelp').style.display = showDebug ? 'block' : 'none';
+
+  // Update settings UI
+  document.getElementById('setRenderDist').value = settings.renderDistance;
+  document.getElementById('renderDistVal').textContent = settings.renderDistance;
+  document.getElementById('setSensitivity').value = settings.sensitivity;
+  document.getElementById('sensitivityVal').textContent = settings.sensitivity;
+  document.getElementById('setMusicVol').value = settings.musicVolume;
+  document.getElementById('musicVolVal').textContent = settings.musicVolume;
+
+  const fpsBtn = document.getElementById('toggleFPS');
+  fpsBtn.textContent = showFPS ? '开' : '关';
+  fpsBtn.className = 'toggle-btn' + (showFPS ? ' active' : '');
+
+  const dbgBtn = document.getElementById('toggleDebug');
+  dbgBtn.textContent = showDebug ? '开' : '关';
+  dbgBtn.className = 'toggle-btn' + (showDebug ? ' active' : '');
+
+  document.getElementById('fpsVal').parentElement.style.display = showFPS ? '' : 'none';
+}
+
+// ========== BLOCK BREAKING ANIMATION ==========
+function updateBreakOverlay(hit, dt) {
+  const overlay = document.getElementById('breakOverlay');
+  const crack = document.getElementById('breakCrack');
+
+  if (!hit) {
+    overlay.style.display = 'none';
+    breakProgress = 0;
+    breakTarget = null;
+    return;
+  }
+
+  const key = hit.x + ',' + hit.y + ',' + hit.z;
+  if (breakTarget !== key) {
+    breakProgress = 0;
+    breakTarget = key;
+  }
+
+  const hardness = BLOCK_HARDNESS[hit.block] || 1.0;
+  breakProgress += dt / hardness;
+
+  overlay.style.display = 'block';
+  crack.style.opacity = Math.min(breakProgress, 1);
+
+  if (breakProgress >= 1) {
+    // Break the block!
+    const oldBlock = hit.block;
+    setBlock(hit.x, hit.y, hit.z, 0);
+    modifiedBlocks[hit.x + ',' + hit.y + ',' + hit.z] = 0;
+    playBreakSound();
+
+    // Add item to inventory
+    if (addToInventory(oldBlock, 1)) {
+      showNotification('+' + BLOCKS[oldBlock].name);
+      playCollectSound();
+    } else {
+      showNotification('❌ 背包已满！');
+    }
+
+    // Add XP
+    const xpAmount = BLOCK_XP[oldBlock] || 1;
+    addXP(xpAmount);
+
+    // Reset
+    breakProgress = 0;
+    breakTarget = null;
+    overlay.style.display = 'none';
+  }
+}
+
 // ========== ASYNC LOADING ==========
 let loadQueue = [];
 let loadIndex = 0;
@@ -742,21 +1229,17 @@ function hideLoading() {
 }
 
 function asyncInit() {
-  // Scene
   scene = new THREE.Scene();
   scene.background = new THREE.Color(0x87CEEB);
-  scene.fog = new THREE.Fog(0x87CEEB, 40, RENDER_DISTANCE * CHUNK_SIZE * 0.9);
+  scene.fog = new THREE.Fog(0x87CEEB, 40, renderDistance * CHUNK_SIZE * 0.9);
 
-  // Camera
   camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
 
-  // Renderer
   renderer = new THREE.WebGLRenderer({ antialias: true });
   renderer.setSize(window.innerWidth, window.innerHeight);
   renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
   document.body.insertBefore(renderer.domElement, document.body.firstChild);
 
-  // Lighting
   const ambientLight = new THREE.AmbientLight(0x888888);
   scene.add(ambientLight);
   const dirLight = new THREE.DirectionalLight(0xFFFFDD, 0.8);
@@ -765,29 +1248,26 @@ function asyncInit() {
 
   clock = new THREE.Clock();
 
-  // Setup UI
   setupHotbar();
   updateBlockName();
   setupEvents();
 
-  // Build load queue: generate + build mesh per chunk, in batches
   loadQueue = [];
-  for (let cx = -RENDER_DISTANCE; cx <= RENDER_DISTANCE; cx++) {
-    for (let cz = -RENDER_DISTANCE; cz <= RENDER_DISTANCE; cz++) {
+  for (let cx = -renderDistance; cx <= renderDistance; cx++) {
+    for (let cz = -renderDistance; cz <= renderDistance; cz++) {
       loadQueue.push({ cx, cz });
     }
   }
   totalChunksToLoad = loadQueue.length;
   loadIndex = 0;
 
-  // Start async loading
   showLoading('Generating terrain...', 0);
   requestAnimationFrame(processLoadBatch);
 }
 
-const CHUNKS_PER_FRAME = 3; // generate N chunks per frame
-const MESHES_PER_FRAME = 2; // build N meshes per frame
-let loadPhase = 'generate'; // 'generate' or 'mesh'
+const CHUNKS_PER_FRAME = 3;
+const MESHES_PER_FRAME = 2;
+let loadPhase = 'generate';
 
 function processLoadBatch() {
   if (loadPhase === 'generate') {
@@ -801,7 +1281,6 @@ function processLoadBatch() {
     showLoading('Generating terrain... ' + loadIndex + '/' + totalChunksToLoad, pct);
 
     if (loadIndex >= totalChunksToLoad) {
-      // Switch to mesh building phase
       loadPhase = 'mesh';
       loadIndex = 0;
     }
@@ -818,7 +1297,6 @@ function processLoadBatch() {
     showLoading('Building meshes... ' + loadIndex + '/' + keys.length, pct);
 
     if (loadIndex >= keys.length) {
-      // Done!
       finishLoading();
       return;
     }
@@ -829,11 +1307,13 @@ function processLoadBatch() {
 function finishLoading() {
   hideLoading();
   document.getElementById('startScreen').style.display = 'flex';
-
-  // Spawn entities
   spawnEntities();
 
-  // Place player
+  // Try to load saved game
+  if (hasSave()) {
+    // Auto-load is not automatic; user clicks "Load Game" in pause menu
+  }
+
   player.x = 8;
   player.z = 8;
   player.y = getTerrainHeight(8, 8) + 1;
@@ -852,49 +1332,345 @@ function spawnEntities() {
 function setupHotbar() {
   const hotbar = document.getElementById('hotbar');
   hotbar.innerHTML = '';
-  HOTBAR_BLOCKS.forEach((blockId, i) => {
+  for (let i = 0; i < HOTBAR_SIZE; i++) {
     const slot = document.createElement('div');
     slot.className = 'slot' + (i === player.selectedSlot ? ' active' : '');
-    const preview = document.createElement('div');
-    preview.className = 'block-preview';
-    const bdef = BLOCKS[blockId];
-    preview.style.background = '#' + bdef.color.toString(16).padStart(6, '0');
-    slot.appendChild(preview);
+    slot.dataset.slot = i;
+
+    const invItem = player.inventory[i];
+    if (invItem) {
+      const bdef = BLOCKS[invItem.blockId];
+      const preview = document.createElement('div');
+      preview.className = 'block-preview';
+      preview.style.background = '#' + bdef.color.toString(16).padStart(6, '0');
+      slot.appendChild(preview);
+
+      if (invItem.count > 1) {
+        const count = document.createElement('div');
+        count.className = 'slot-count';
+        count.textContent = invItem.count;
+        slot.appendChild(count);
+      }
+    }
+
     const num = document.createElement('div');
     num.className = 'slot-num';
     num.textContent = i + 1;
     slot.appendChild(num);
-    const name = document.createElement('div');
-    name.className = 'slot-name';
-    name.textContent = bdef.name;
-    slot.appendChild(name);
+
     hotbar.appendChild(slot);
-  });
+  }
 }
 
-function selectSlot(i) {
-  player.selectedSlot = Math.max(0, Math.min(HOTBAR_BLOCKS.length - 1, i));
-  document.querySelectorAll('#hotbar .slot').forEach((s, idx) => {
-    s.className = 'slot' + (idx === player.selectedSlot ? ' active' : '');
+function refreshHotbar() {
+  const slots = document.querySelectorAll('#hotbar .slot');
+  slots.forEach((slot, i) => {
+    slot.className = 'slot' + (i === player.selectedSlot ? ' active' : '');
+    slot.innerHTML = '';
+
+    const invItem = player.inventory[i];
+    if (invItem) {
+      const bdef = BLOCKS[invItem.blockId];
+      const preview = document.createElement('div');
+      preview.className = 'block-preview';
+      preview.style.background = '#' + bdef.color.toString(16).padStart(6, '0');
+      slot.appendChild(preview);
+
+      if (invItem.count > 1) {
+        const count = document.createElement('div');
+        count.className = 'slot-count';
+        count.textContent = invItem.count;
+        slot.appendChild(count);
+      }
+    }
+
+    const num = document.createElement('div');
+    num.className = 'slot-num';
+    num.textContent = i + 1;
+    slot.appendChild(num);
   });
   updateBlockName();
 }
 
-function updateBlockName() {
-  const blockId = HOTBAR_BLOCKS[player.selectedSlot];
-  document.getElementById('blockName').textContent = BLOCKS[blockId].name;
+function selectSlot(i) {
+  player.selectedSlot = Math.max(0, Math.min(HOTBAR_SIZE - 1, i));
+  refreshHotbar();
 }
+
+function updateBlockName() {
+  const slot = player.inventory[player.selectedSlot];
+  if (slot) {
+    document.getElementById('blockName').textContent = BLOCKS[slot.blockId].name + (slot.count > 1 ? ' x' + slot.count : '');
+  } else {
+    document.getElementById('blockName').textContent = '空';
+  }
+}
+
+// ========== INVENTORY UI ==========
+function openInventory() {
+  inventoryOpen = true;
+  document.getElementById('inventoryScreen').style.display = 'flex';
+  buildInventoryGrid();
+  if (document.pointerLockElement) document.exitPointerLock();
+}
+
+function closeInventory() {
+  inventoryOpen = false;
+  document.getElementById('inventoryScreen').style.display = 'none';
+  document.getElementById('invCursorItem').style.display = 'none';
+  cursorItem = null;
+  dragSourceSlot = -1;
+}
+
+function buildInventoryGrid() {
+  const grid = document.getElementById('inventoryGrid');
+  grid.innerHTML = '';
+
+  // Main inventory rows (slots 9-35, 3 rows of 9)
+  for (let row = 0; row < 3; row++) {
+    const rowDiv = document.createElement('div');
+    rowDiv.className = 'inv-row';
+    for (let col = 0; col < 9; col++) {
+      const idx = 9 + row * 9 + col;
+      rowDiv.appendChild(createInvSlot(idx));
+    }
+    grid.appendChild(rowDiv);
+  }
+
+  // Separator
+  const sep = document.createElement('div');
+  sep.className = 'inv-separator';
+  grid.appendChild(sep);
+
+  // Hotbar row (slots 0-8)
+  const hotbarRow = document.createElement('div');
+  hotbarRow.className = 'inv-row';
+  for (let col = 0; col < 9; col++) {
+    hotbarRow.appendChild(createInvSlot(col));
+  }
+  grid.appendChild(hotbarRow);
+}
+
+function createInvSlot(idx) {
+  const slot = document.createElement('div');
+  slot.className = 'inv-slot';
+  slot.dataset.slot = idx;
+
+  const invItem = player.inventory[idx];
+  if (invItem) {
+    const bdef = BLOCKS[invItem.blockId];
+    const preview = document.createElement('div');
+    preview.className = 'block-preview';
+    preview.style.background = '#' + bdef.color.toString(16).padStart(6, '0');
+    slot.appendChild(preview);
+
+    if (invItem.count > 1) {
+      const count = document.createElement('div');
+      count.className = 'slot-count';
+      count.textContent = invItem.count;
+      slot.appendChild(count);
+    }
+  }
+
+  if (idx < 9) {
+    const num = document.createElement('div');
+    num.className = 'slot-num';
+    num.textContent = idx + 1;
+    slot.appendChild(num);
+  }
+
+  // Click handler
+  slot.addEventListener('mousedown', e => {
+    e.preventDefault();
+    e.stopPropagation();
+    handleInventoryClick(idx, e.button);
+  });
+
+  // Hover for tooltip
+  slot.addEventListener('mouseenter', e => {
+    if (invItem) {
+      const tip = document.getElementById('tooltip');
+      tip.textContent = BLOCKS[invItem.blockId].name + ' x' + invItem.count;
+      tip.style.display = 'block';
+      tip.style.left = (e.clientX + 12) + 'px';
+      tip.style.top = (e.clientY - 28) + 'px';
+    }
+  });
+  slot.addEventListener('mousemove', e => {
+    const tip = document.getElementById('tooltip');
+    if (tip.style.display === 'block') {
+      tip.style.left = (e.clientX + 12) + 'px';
+      tip.style.top = (e.clientY - 28) + 'px';
+    }
+  });
+  slot.addEventListener('mouseleave', () => {
+    document.getElementById('tooltip').style.display = 'none';
+  });
+
+  return slot;
+}
+
+function handleInventoryClick(slotIdx, button) {
+  const slotItem = player.inventory[slotIdx];
+
+  if (button === 0) { // Left click
+    if (cursorItem && slotItem) {
+      // Swap
+      if (cursorItem.blockId === slotItem.blockId) {
+        // Stack
+        const canAdd = Math.min(cursorItem.count, 64 - slotItem.count);
+        slotItem.count += canAdd;
+        cursorItem.count -= canAdd;
+        if (cursorItem.count <= 0) cursorItem = null;
+      } else {
+        // Swap
+        player.inventory[slotIdx] = cursorItem;
+        cursorItem = slotItem;
+      }
+    } else if (cursorItem) {
+      // Place
+      player.inventory[slotIdx] = cursorItem;
+      cursorItem = null;
+    } else if (slotItem) {
+      // Pick up
+      cursorItem = slotItem;
+      player.inventory[slotIdx] = null;
+      dragSourceSlot = slotIdx;
+    }
+  } else if (button === 2) { // Right click
+    if (cursorItem && slotItem) {
+      if (cursorItem.blockId === slotItem.blockId && slotItem.count < 64) {
+        slotItem.count++;
+        cursorItem.count--;
+        if (cursorItem.count <= 0) cursorItem = null;
+      }
+    } else if (cursorItem && !slotItem) {
+      player.inventory[slotIdx] = { blockId: cursorItem.blockId, count: 1 };
+      cursorItem.count--;
+      if (cursorItem.count <= 0) cursorItem = null;
+    } else if (!cursorItem && slotItem) {
+      // Pick up half
+      const half = Math.ceil(slotItem.count / 2);
+      cursorItem = { blockId: slotItem.blockId, count: half };
+      slotItem.count -= half;
+      if (slotItem.count <= 0) player.inventory[slotIdx] = null;
+    }
+  }
+
+  // Update cursor item visual
+  updateCursorItem();
+  buildInventoryGrid();
+  refreshHotbar();
+}
+
+function updateCursorItem() {
+  const el = document.getElementById('invCursorItem');
+  if (cursorItem) {
+    const bdef = BLOCKS[cursorItem.blockId];
+    el.style.display = 'block';
+    el.style.background = '#' + bdef.color.toString(16).padStart(6, '0');
+    el.textContent = cursorItem.count > 1 ? cursorItem.count : '';
+    el.style.color = '#fff';
+    el.style.fontSize = '12px';
+    el.style.display = 'flex';
+    el.style.alignItems = 'center';
+    el.style.justifyContent = 'center';
+  } else {
+    el.style.display = 'none';
+  }
+}
+
+document.addEventListener('mousemove', e => {
+  const el = document.getElementById('invCursorItem');
+  if (el.style.display !== 'none') {
+    el.style.left = (e.clientX - 20) + 'px';
+    el.style.top = (e.clientY - 20) + 'px';
+  }
+});
 
 // ========== EVENTS ==========
 function setupEvents() {
-  // Start game
   document.getElementById('startScreen').addEventListener('click', startGame);
+
+  // Pause menu buttons
+  document.getElementById('btnResume').addEventListener('click', () => { togglePause(); });
+  document.getElementById('btnSettings').addEventListener('click', () => {
+    document.getElementById('settingsPanel').style.display = 'block';
+  });
+  document.getElementById('btnSaveGame').addEventListener('click', () => { saveGame(); togglePause(); });
+  document.getElementById('btnLoadGame').addEventListener('click', () => {
+    if (loadGame()) {
+      // Reload chunks around player
+      const pcx = Math.floor(player.x / CHUNK_SIZE);
+      const pcz = Math.floor(player.z / CHUNK_SIZE);
+      for (let cx = pcx - renderDistance; cx <= pcx + renderDistance; cx++) {
+        for (let cz = pcz - renderDistance; cz <= pcz + renderDistance; cz++) {
+          if (!chunks[getChunkKey(cx, cz)]) getChunk(cx, cz);
+        }
+      }
+      // Rebuild all dirty chunks
+      for (const key in chunks) { chunks[key].dirty = true; }
+      togglePause();
+    }
+  });
+  document.getElementById('btnBackTitle').addEventListener('click', () => {
+    paused = false;
+    gameStarted = false;
+    document.getElementById('pauseOverlay').style.display = 'none';
+    document.getElementById('hud').style.display = 'none';
+    document.getElementById('startScreen').style.display = 'flex';
+    if (document.pointerLockElement) document.exitPointerLock();
+  });
+
+  // Settings
+  document.getElementById('setRenderDist').addEventListener('input', e => {
+    settings.renderDistance = parseInt(e.target.value);
+    document.getElementById('renderDistVal').textContent = settings.renderDistance;
+    applySettings();
+  });
+  document.getElementById('setSensitivity').addEventListener('input', e => {
+    settings.sensitivity = parseInt(e.target.value);
+    document.getElementById('sensitivityVal').textContent = settings.sensitivity;
+    applySettings();
+  });
+  document.getElementById('setMusicVol').addEventListener('input', e => {
+    settings.musicVolume = parseInt(e.target.value);
+    document.getElementById('musicVolVal').textContent = settings.musicVolume;
+    applySettings();
+  });
+  document.getElementById('toggleFPS').addEventListener('click', () => {
+    settings.showFPS = !settings.showFPS;
+    applySettings();
+  });
+  document.getElementById('toggleDebug').addEventListener('click', () => {
+    settings.showDebug = !settings.showDebug;
+    applySettings();
+  });
+  document.getElementById('closeSettings').addEventListener('click', () => {
+    document.getElementById('settingsPanel').style.display = 'none';
+  });
 
   // Keyboard
   document.addEventListener('keydown', e => {
     keys[e.code] = true;
-    if (e.code === 'Escape') togglePause();
-    if (e.code >= 'Digit1' && e.code <= 'Digit6') {
+
+    if (e.code === 'Escape') {
+      if (inventoryOpen) {
+        closeInventory();
+      } else if (document.getElementById('settingsPanel').style.display === 'block') {
+        document.getElementById('settingsPanel').style.display = 'none';
+      } else {
+        togglePause();
+      }
+    }
+
+    if (e.code === 'KeyE' && gameStarted && !paused) {
+      if (inventoryOpen) closeInventory();
+      else openInventory();
+    }
+
+    // Number keys 1-9
+    if (e.code >= 'Digit1' && e.code <= 'Digit9') {
       selectSlot(parseInt(e.key) - 1);
     }
   });
@@ -902,27 +1678,21 @@ function setupEvents() {
 
   // Mouse
   renderer.domElement.addEventListener('click', () => {
-    if (gameStarted && !paused) {
+    if (gameStarted && !paused && !inventoryOpen) {
       renderer.domElement.requestPointerLock();
-    }
-  });
-
-  document.addEventListener('pointerlockchange', () => {
-    if (!document.pointerLockElement && gameStarted) {
-      // Don't auto-pause on pointer lock loss
     }
   });
 
   document.addEventListener('mousemove', e => {
     if (document.pointerLockElement && gameStarted && !paused) {
-      player.yaw -= e.movementX * 0.002;
-      player.pitch -= e.movementY * 0.002;
+      player.yaw -= e.movementX * mouseSensitivity;
+      player.pitch -= e.movementY * mouseSensitivity;
       player.pitch = Math.max(-Math.PI / 2 + 0.01, Math.min(Math.PI / 2 - 0.01, player.pitch));
     }
   });
 
   document.addEventListener('mousedown', e => {
-    if (!gameStarted || paused) return;
+    if (!gameStarted || paused || inventoryOpen) return;
     const dir = new THREE.Vector3(
       Math.sin(player.yaw) * Math.cos(player.pitch),
       Math.sin(player.pitch),
@@ -933,19 +1703,23 @@ function setupEvents() {
     if (hit) {
       if (e.button === 0) { // Left click - place
         if (hit.prevY >= 0 && hit.prevY < WORLD_HEIGHT) {
-          // Don't place inside player
           const px = Math.floor(player.x);
           const py1 = Math.floor(player.y);
           const py2 = Math.floor(player.y + PLAYER_HEIGHT);
           const pz = Math.floor(player.z);
           if (hit.prevX !== px || (hit.prevY !== py1 && hit.prevY !== py2) || hit.prevZ !== pz) {
-            setBlock(hit.prevX, hit.prevY, hit.prevZ, HOTBAR_BLOCKS[player.selectedSlot]);
+            const slotItem = player.inventory[player.selectedSlot];
+            if (slotItem && slotItem.count > 0) {
+              setBlock(hit.prevX, hit.prevY, hit.prevZ, slotItem.blockId);
+              modifiedBlocks[hit.prevX + ',' + hit.prevY + ',' + hit.prevZ] = slotItem.blockId;
+              removeFromSlot(player.selectedSlot, 1);
+              playPlaceSound();
+              refreshHotbar();
+            }
           }
         }
       } else if (e.button === 2) { // Right click - break
-        if (hit.block !== 0) {
-          setBlock(hit.x, hit.y, hit.z, 0);
-        }
+        // Breaking is handled in game loop now
       }
     }
   });
@@ -954,9 +1728,9 @@ function setupEvents() {
 
   // Scroll wheel
   document.addEventListener('wheel', e => {
-    if (!gameStarted || paused) return;
+    if (!gameStarted || paused || inventoryOpen) return;
     const dir = e.deltaY > 0 ? 1 : -1;
-    selectSlot((player.selectedSlot + dir + HOTBAR_BLOCKS.length) % HOTBAR_BLOCKS.length);
+    selectSlot((player.selectedSlot + dir + HOTBAR_SIZE) % HOTBAR_SIZE);
   });
 
   // Resize
@@ -964,6 +1738,11 @@ function setupEvents() {
     camera.aspect = window.innerWidth / window.innerHeight;
     camera.updateProjectionMatrix();
     renderer.setSize(window.innerWidth, window.innerHeight);
+  });
+
+  // Save on unload
+  window.addEventListener('beforeunload', () => {
+    if (gameStarted) saveGame();
   });
 }
 
@@ -973,6 +1752,15 @@ function startGame() {
   gameStarted = true;
   renderer.domElement.requestPointerLock();
   lastTime = performance.now();
+
+  // Initialize inventory if empty
+  const hasItems = player.inventory.some(s => s !== null);
+  if (!hasItems) initInventory();
+
+  refreshHotbar();
+  updateXPUI();
+  updateHungerUI();
+  applySettings();
   requestAnimationFrame(gameLoop);
 }
 
@@ -983,7 +1771,7 @@ function togglePause() {
   if (paused && document.pointerLockElement) {
     document.exitPointerLock();
   } else if (!paused) {
-    renderer.domElement.requestPointerLock();
+    if (!inventoryOpen) renderer.domElement.requestPointerLock();
   }
 }
 
@@ -999,13 +1787,22 @@ function gameLoop(time) {
   frameCount++;
   fpsTime += dt;
   if (fpsTime >= 0.5) {
-    document.getElementById('fpsVal').textContent = Math.round(frameCount / fpsTime);
+    if (showFPS) {
+      document.getElementById('fpsVal').textContent = Math.round(frameCount / fpsTime);
+      document.getElementById('fpsVal').parentElement.style.display = '';
+    } else {
+      document.getElementById('fpsVal').parentElement.style.display = 'none';
+    }
     frameCount = 0;
     fpsTime = 0;
   }
 
+  // Sprint
+  player.sprint = keys['ShiftLeft'] || keys['ShiftRight'];
+  const speed = MOVE_SPEED * (player.sprint ? SPRINT_MULT : 1);
+
   // Movement
-  const forward = new THREE.Vector3(-Math.sin(player.yaw), 0, -Math.cos(player.yaw));
+  const forward = new THREE.Vector3(Math.sin(player.yaw), 0, Math.cos(player.yaw));
   const right = new THREE.Vector3(Math.cos(player.yaw), 0, -Math.sin(player.yaw));
   let moveX = 0, moveZ = 0;
 
@@ -1017,8 +1814,8 @@ function gameLoop(time) {
   const len = Math.sqrt(moveX * moveX + moveZ * moveZ);
   if (len > 0) { moveX /= len; moveZ /= len; }
 
-  player.vx = moveX * MOVE_SPEED;
-  player.vz = moveZ * MOVE_SPEED;
+  player.vx = moveX * speed;
+  player.vz = moveZ * speed;
 
   // Jump
   if (keys['Space'] && player.onGround) {
@@ -1034,21 +1831,18 @@ function gameLoop(time) {
   const newY = player.y + player.vy * dt;
   const newZ = player.z + player.vz * dt;
 
-  // X collision
   if (!checkCollision(newX, player.y, player.z, PLAYER_WIDTH, PLAYER_HEIGHT)) {
     player.x = newX;
   } else {
     player.vx = 0;
   }
 
-  // Z collision
   if (!checkCollision(player.x, player.y, newZ, PLAYER_WIDTH, PLAYER_HEIGHT)) {
     player.z = newZ;
   } else {
     player.vz = 0;
   }
 
-  // Y collision
   if (!checkCollision(player.x, newY, player.z, PLAYER_WIDTH, PLAYER_HEIGHT)) {
     player.y = newY;
     player.onGround = false;
@@ -1057,7 +1851,6 @@ function gameLoop(time) {
     player.vy = 0;
   }
 
-  // Don't fall below 0
   if (player.y < 0) { player.y = 0; player.vy = 0; player.onGround = true; }
 
   // Camera
@@ -1069,17 +1862,42 @@ function gameLoop(time) {
   );
   camera.lookAt(camera.position.clone().add(lookDir));
 
+  // Hunger tick (every ~30 seconds lose 1 hunger)
+  player.hungerTick += dt;
+  if (player.hungerTick >= 30) {
+    player.hungerTick = 0;
+    player.hunger = Math.max(0, player.hunger - 1);
+    updateHungerUI();
+  }
+
+  // Eating: right-click with food (slot 9 = food block 10)
+  // Not needed as block breaking is right-click; hunger is simplified
+
+  // Block breaking (right-click hold)
+  if (keys['mousedown_2'] || keys['contextmenu']) {
+    const dir = new THREE.Vector3(
+      Math.sin(player.yaw) * Math.cos(player.pitch),
+      Math.sin(player.pitch),
+      Math.cos(player.yaw) * Math.cos(player.pitch)
+    );
+    const origin = new THREE.Vector3(player.x, player.y + PLAYER_HEIGHT - 0.2, player.z);
+    const hit = raycast(origin, dir, 6);
+    updateBreakOverlay(hit, dt);
+  } else {
+    updateBreakOverlay(null, dt);
+  }
+
   // Update chunks
   const pcx = Math.floor(player.x / CHUNK_SIZE);
   const pcz = Math.floor(player.z / CHUNK_SIZE);
-  for (let cx = pcx - RENDER_DISTANCE; cx <= pcx + RENDER_DISTANCE; cx++) {
-    for (let cz = pcz - RENDER_DISTANCE; cz <= pcz + RENDER_DISTANCE; cz++) {
+  for (let cx = pcx - renderDistance; cx <= pcx + renderDistance; cx++) {
+    for (let cz = pcz - renderDistance; cz <= pcz + renderDistance; cz++) {
       const key = getChunkKey(cx, cz);
       if (!chunks[key]) getChunk(cx, cz);
     }
   }
 
-  // Build dirty chunks (limit per frame)
+  // Build dirty chunks
   let built = 0;
   for (const key in chunks) {
     if (chunks[key].dirty && built < 4) {
@@ -1091,14 +1909,32 @@ function gameLoop(time) {
   // Update entities
   entities.forEach(e => e.update(dt));
 
+  // Update fog for render distance
+  scene.fog.far = renderDistance * CHUNK_SIZE * 0.9;
+
   // Update HUD
   document.getElementById('xyzVal').textContent =
     `${player.x.toFixed(1)}, ${player.y.toFixed(1)}, ${player.z.toFixed(1)}`;
   document.getElementById('chunkVal').textContent = Object.keys(chunks).length;
   document.getElementById('entityVal').textContent = entities.length;
 
+  // Auto-save
+  autoSaveTimer += dt * 1000;
+  if (autoSaveTimer >= AUTOSAVE_INTERVAL) {
+    autoSaveTimer = 0;
+    saveGame();
+  }
+
   renderer.render(scene, camera);
 }
+
+// Track right mouse button state for continuous breaking
+document.addEventListener('mousedown', e => {
+  if (e.button === 2) keys['mousedown_2'] = true;
+});
+document.addEventListener('mouseup', e => {
+  if (e.button === 2) keys['mousedown_2'] = false;
+});
 
 // ========== INIT ==========
 asyncInit();

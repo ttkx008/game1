@@ -145,6 +145,15 @@ canvas { display: block; width: 100vw; height: 100vh; }
 </head>
 <body>
 
+<!-- Loading Screen -->
+<div id="loadingScreen" style="position:fixed;inset:0;background:#1a1a2e;display:flex;flex-direction:column;align-items:center;justify-content:center;z-index:300;color:#fff;font-family:'Segoe UI',Arial,sans-serif">
+  <h2 style="font-size:28px;margin-bottom:20px">🌍 Generating World...</h2>
+  <div style="width:300px;height:8px;background:#333;border-radius:4px;overflow:hidden;margin-bottom:12px">
+    <div class="load-bar-fill" style="height:100%;background:linear-gradient(90deg,#4ecdc4,#44bd32);width:0%;transition:width 0.2s;border-radius:4px"></div>
+  </div>
+  <div class="load-text" style="font-size:14px;color:#aaa">Preparing terrain...</div>
+</div>
+
 <!-- Start Screen -->
 <div id="startScreen">
   <h1>像素方块世界</h1>
@@ -711,8 +720,28 @@ function checkCollision(x, y, z, w, h) {
   return false;
 }
 
-// ========== INIT ==========
-function init() {
+// ========== ASYNC LOADING ==========
+let loadQueue = [];
+let loadIndex = 0;
+let totalChunksToLoad = 0;
+
+function showLoading(msg, pct) {
+  const el = document.getElementById('loadingScreen');
+  if (el) {
+    el.style.display = 'flex';
+    const bar = el.querySelector('.load-bar-fill');
+    const txt = el.querySelector('.load-text');
+    if (bar) bar.style.width = pct + '%';
+    if (txt) txt.textContent = msg;
+  }
+}
+
+function hideLoading() {
+  const el = document.getElementById('loadingScreen');
+  if (el) el.style.display = 'none';
+}
+
+function asyncInit() {
   // Scene
   scene = new THREE.Scene();
   scene.background = new THREE.Color(0x87CEEB);
@@ -736,8 +765,70 @@ function init() {
 
   clock = new THREE.Clock();
 
-  // Generate initial chunks
-  generateInitialChunks();
+  // Setup UI
+  setupHotbar();
+  updateBlockName();
+  setupEvents();
+
+  // Build load queue: generate + build mesh per chunk, in batches
+  loadQueue = [];
+  for (let cx = -RENDER_DISTANCE; cx <= RENDER_DISTANCE; cx++) {
+    for (let cz = -RENDER_DISTANCE; cz <= RENDER_DISTANCE; cz++) {
+      loadQueue.push({ cx, cz });
+    }
+  }
+  totalChunksToLoad = loadQueue.length;
+  loadIndex = 0;
+
+  // Start async loading
+  showLoading('Generating terrain...', 0);
+  requestAnimationFrame(processLoadBatch);
+}
+
+const CHUNKS_PER_FRAME = 3; // generate N chunks per frame
+const MESHES_PER_FRAME = 2; // build N meshes per frame
+let loadPhase = 'generate'; // 'generate' or 'mesh'
+
+function processLoadBatch() {
+  if (loadPhase === 'generate') {
+    const end = Math.min(loadIndex + CHUNKS_PER_FRAME, totalChunksToLoad);
+    for (let i = loadIndex; i < end; i++) {
+      const { cx, cz } = loadQueue[i];
+      getChunk(cx, cz);
+    }
+    loadIndex = end;
+    const pct = Math.floor((loadIndex / totalChunksToLoad) * 50);
+    showLoading('Generating terrain... ' + loadIndex + '/' + totalChunksToLoad, pct);
+
+    if (loadIndex >= totalChunksToLoad) {
+      // Switch to mesh building phase
+      loadPhase = 'mesh';
+      loadIndex = 0;
+    }
+    requestAnimationFrame(processLoadBatch);
+  } else if (loadPhase === 'mesh') {
+    const keys = Object.keys(chunks);
+    const end = Math.min(loadIndex + MESHES_PER_FRAME, keys.length);
+    for (let i = loadIndex; i < end; i++) {
+      chunks[keys[i]].dirty = true;
+      chunks[keys[i]].buildMesh();
+    }
+    loadIndex = end;
+    const pct = 50 + Math.floor((loadIndex / keys.length) * 50);
+    showLoading('Building meshes... ' + loadIndex + '/' + keys.length, pct);
+
+    if (loadIndex >= keys.length) {
+      // Done!
+      finishLoading();
+      return;
+    }
+    requestAnimationFrame(processLoadBatch);
+  }
+}
+
+function finishLoading() {
+  hideLoading();
+  document.getElementById('startScreen').style.display = 'flex';
 
   // Spawn entities
   spawnEntities();
@@ -746,31 +837,6 @@ function init() {
   player.x = 8;
   player.z = 8;
   player.y = getTerrainHeight(8, 8) + 1;
-
-  // Setup UI
-  setupHotbar();
-  updateBlockName();
-
-  // Events
-  setupEvents();
-
-  // Build chunk meshes
-  buildAllChunkMeshes();
-}
-
-function generateInitialChunks() {
-  for (let cx = -RENDER_DISTANCE; cx <= RENDER_DISTANCE; cx++) {
-    for (let cz = -RENDER_DISTANCE; cz <= RENDER_DISTANCE; cz++) {
-      getChunk(cx, cz);
-    }
-  }
-}
-
-function buildAllChunkMeshes() {
-  for (const key in chunks) {
-    chunks[key].dirty = true;
-    chunks[key].buildMesh();
-  }
 }
 
 function spawnEntities() {
@@ -1035,7 +1101,7 @@ function gameLoop(time) {
 }
 
 // ========== INIT ==========
-init();
+asyncInit();
 </script>
 </body>
 </html>

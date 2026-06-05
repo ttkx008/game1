@@ -1,1241 +1,2240 @@
 <!DOCTYPE html>
-<html lang="zh-CN">
+<html lang="en">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, maximum-scale=1.0">
-<title>3D 像素方块世界</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>MiniCraft - Voxel Game</title>
 <style>
-  * { margin: 0; padding: 0; box-sizing: border-box; }
-  body { overflow: hidden; background: #000; font-family: 'Courier New', monospace; }
-  canvas { display: block; }
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body { overflow: hidden; background: #000; font-family: 'Segoe UI', Arial, sans-serif; }
+canvas { display: block; }
 
-  /* HUD 界面 */
-  #hud {
-    position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%);
-    display: flex; gap: 4px; z-index: 10;
-    background: rgba(0,0,0,0.5); padding: 6px; border-radius: 8px;
-  }
-  .hotbar-slot {
-    width: 48px; height: 48px; border: 2px solid #555;
-    background: rgba(80,80,80,0.6); border-radius: 4px;
-    display: flex; align-items: center; justify-content: center;
-    cursor: pointer; transition: border-color 0.15s;
-  }
-  .hotbar-slot.active { border-color: #fff; background: rgba(200,200,200,0.3); }
-  .hotbar-slot canvas { width: 36px; height: 36px; image-rendering: pixelated; }
-  .hotbar-key {
-    position: absolute; top: 2px; left: 4px; font-size: 10px; color: #aaa;
-  }
+/* Crosshair */
+#crosshair {
+  position: fixed; top: 50%; left: 50%; transform: translate(-50%,-50%);
+  width: 24px; height: 24px; pointer-events: none; z-index: 10;
+}
+#crosshair::before, #crosshair::after {
+  content: ''; position: absolute; background: #fff; mix-blend-mode: difference;
+}
+#crosshair::before { left: 11px; top: 4px; width: 2px; height: 16px; }
+#crosshair::after { left: 4px; top: 11px; width: 16px; height: 2px; }
 
-  /* 准星 */
-  #crosshair {
-    position: fixed; top: 50%; left: 50%; transform: translate(-50%,-50%);
-    width: 20px; height: 20px; z-index: 5; pointer-events: none;
-  }
-  #crosshair::before, #crosshair::after {
-    content: ''; position: absolute; background: rgba(255,255,255,0.8);
-  }
-  #crosshair::before { width: 2px; height: 20px; left: 9px; top: 0; }
-  #crosshair::after { width: 20px; height: 2px; top: 9px; left: 0; }
+/* HUD */
+#hud { position: fixed; top: 0; left: 0; right: 0; bottom: 0; pointer-events: none; z-index: 5; }
+#health-bar { position: absolute; top: 10px; left: 10px; display: flex; gap: 2px; }
+#hunger-bar { position: absolute; top: 10px; right: 10px; display: flex; gap: 2px; }
+.heart, .hunger { width: 16px; height: 16px; font-size: 14px; text-align: center; line-height: 16px; }
+.heart { color: #e22; text-shadow: 1px 1px 0 #000; }
+.heart.empty { color: #555; }
+.hunger { color: #b83; text-shadow: 1px 1px 0 #000; }
+.hunger.empty { color: #555; }
 
-  /* 开始提示 */
-  #overlay {
-    position: fixed; inset: 0; background: rgba(0,0,0,0.75);
-    display: flex; flex-direction: column; align-items: center; justify-content: center;
-    z-index: 100; color: #fff; cursor: pointer;
-  }
-  #overlay h1 { font-size: 36px; margin-bottom: 12px; text-shadow: 2px 2px #000; }
-  #overlay p { font-size: 16px; color: #ccc; margin-bottom: 6px; }
-  #overlay .sub { font-size: 13px; color: #888; margin-top: 16px; }
+/* Hotbar */
+#hotbar {
+  position: absolute; bottom: 10px; left: 50%; transform: translateX(-50%);
+  display: flex; gap: 2px; background: rgba(0,0,0,0.6); padding: 4px; border-radius: 4px;
+  border: 2px solid #555;
+}
+.hotbar-slot {
+  width: 48px; height: 48px; background: rgba(80,80,80,0.8); border: 2px solid #333;
+  border-radius: 2px; position: relative; display: flex; align-items: center;
+  justify-content: center; font-size: 12px; color: #fff; text-shadow: 1px 1px 0 #000;
+}
+.hotbar-slot.selected { border-color: #fff; background: rgba(120,120,120,0.9); }
+.hotbar-slot .count {
+  position: absolute; bottom: 1px; right: 3px; font-size: 10px; font-weight: bold;
+}
 
-  /* 加载界面 */
-  #loading {
-    position: fixed; inset: 0; background: #1a1a2e;
-    display: flex; flex-direction: column; align-items: center; justify-content: center;
-    z-index: 200; color: #fff;
-  }
-  #loading h2 { margin-bottom: 16px; }
-  .loader {
-    width: 200px; height: 6px; background: #333; border-radius: 3px; overflow: hidden;
-  }
-  .loader-bar { height: 100%; background: #4ecdc4; width: 0%; transition: width 0.3s; }
+/* Coordinates */
+#coords {
+  position: absolute; top: 40px; left: 10px; color: #fff; font-size: 12px;
+  text-shadow: 1px 1px 0 #000; font-family: monospace;
+}
+#fps-display {
+  position: absolute; top: 55px; left: 10px; color: #0f0; font-size: 11px;
+  text-shadow: 1px 1px 0 #000; font-family: monospace;
+}
+#time-display {
+  position: absolute; top: 70px; left: 10px; color: #ff0; font-size: 11px;
+  text-shadow: 1px 1px 0 #000; font-family: monospace;
+}
+#biome-display {
+  position: absolute; top: 85px; left: 10px; color: #0ff; font-size: 11px;
+  text-shadow: 1px 1px 0 #000; font-family: monospace;
+}
+#fly-display {
+  position: absolute; top: 100px; left: 10px; color: #f0f; font-size: 11px;
+  text-shadow: 1px 1px 0 #000; font-family: monospace; display: none;
+}
 
-  /* 坐标显示 */
-  #coords {
-    position: fixed; top: 10px; left: 10px; color: #fff;
-    font-size: 13px; z-index: 10; text-shadow: 1px 1px #000;
-    background: rgba(0,0,0,0.4); padding: 6px 10px; border-radius: 4px;
-  }
+/* Block highlight */
+#block-info {
+  position: absolute; bottom: 75px; left: 50%; transform: translateX(-50%);
+  color: #fff; font-size: 12px; text-shadow: 1px 1px 0 #000;
+  background: rgba(0,0,0,0.4); padding: 2px 8px; border-radius: 3px;
+}
 
-  /* 移动端控制 */
-  #mobile-controls {
-    display: none; position: fixed; z-index: 20;
-    bottom: 0; left: 0; right: 0; height: 160px; pointer-events: none;
-  }
-  .joystick-area {
-    position: absolute; width: 120px; height: 120px; border-radius: 50%;
-    background: rgba(255,255,255,0.15); border: 2px solid rgba(255,255,255,0.3);
-    pointer-events: auto;
-  }
-  #joystick-left { left: 30px; bottom: 30px; }
-  #joystick-right { right: 30px; bottom: 30px; }
-  .joystick-thumb {
-    position: absolute; width: 50px; height: 50px; border-radius: 50%;
-    background: rgba(255,255,255,0.5); top: 50%; left: 50%;
-    transform: translate(-50%,-50%); pointer-events: none;
-  }
-  #btn-jump {
-    position: absolute; right: 170px; bottom: 60px; width: 60px; height: 60px;
-    border-radius: 50%; background: rgba(255,255,255,0.2);
-    border: 2px solid rgba(255,255,255,0.4); color: #fff; font-size: 14px;
-    pointer-events: auto; display: flex; align-items: center; justify-content: center;
-  }
-  #btn-break, #btn-place {
-    position: absolute; left: 50%; transform: translateX(-50%);
-    width: 56px; height: 56px; border-radius: 50%;
-    background: rgba(255,255,255,0.2); border: 2px solid rgba(255,255,255,0.4);
-    color: #fff; font-size: 12px; pointer-events: auto;
-    display: flex; align-items: center; justify-content: center;
-  }
-  #btn-break { bottom: 90px; margin-left: -40px; }
-  #btn-place { bottom: 90px; margin-left: 40px; }
+/* Inventory Screen */
+#inventory-screen {
+  position: fixed; top: 0; left: 0; right: 0; bottom: 0;
+  background: rgba(0,0,0,0.7); display: none; z-index: 20;
+  align-items: center; justify-content: center;
+}
+#inventory-screen.open { display: flex; }
+#inventory-panel {
+  background: #c6c6c6; border: 3px solid #555; border-radius: 4px;
+  padding: 16px; min-width: 500px;
+}
+#inventory-panel h3 { text-align: center; margin-bottom: 8px; color: #333; font-size: 14px; }
+.inv-row { display: flex; gap: 2px; margin-bottom: 2px; justify-content: center; }
+.inv-slot {
+  width: 44px; height: 44px; background: #8b8b8b; border: 2px solid #373737;
+  border-top-color: #fff; border-left-color: #fff; position: relative;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 11px; color: #fff; text-shadow: 1px 1px 0 #000; cursor: pointer;
+  image-rendering: pixelated;
+}
+.inv-slot:hover { background: #a0a0a0; }
+.inv-slot .count {
+  position: absolute; bottom: 1px; right: 2px; font-size: 9px; font-weight: bold;
+}
+#crafting-area {
+  margin: 8px 0; text-align: center; border-top: 2px solid #555; padding-top: 8px;
+}
+#crafting-area h4 { color: #333; font-size: 12px; margin-bottom: 4px; }
+.crafting-grid { display: inline-flex; gap: 2px; flex-direction: column; }
+.crafting-row { display: flex; gap: 2px; }
+.crafting-slot {
+  width: 40px; height: 40px; background: #8b8b8b; border: 2px solid #373737;
+  border-top-color: #fff; border-left-color: #fff; position: relative;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 11px; color: #fff; text-shadow: 1px 1px 0 #000; cursor: pointer;
+}
+.crafting-output {
+  width: 48px; height: 48px; background: #8b8b8b; border: 2px solid #373737;
+  border-top-color: #fff; border-left-color: #fff; display: inline-flex;
+  align-items: center; justify-content: center; margin: 8px;
+  font-size: 11px; color: #fff; text-shadow: 1px 1px 0 #000; cursor: pointer;
+}
+#recipe-list {
+  margin-top: 8px; max-height: 120px; overflow-y: auto;
+  background: #a0a0a0; padding: 4px; border-radius: 3px;
+}
+.recipe-item {
+  font-size: 11px; color: #333; padding: 2px 4px; cursor: pointer;
+  border-radius: 2px;
+}
+.recipe-item:hover { background: #c0c0c0; }
+.recipe-item.can-craft { color: #060; font-weight: bold; }
 
-  @media (max-width: 768px) {
-    #mobile-controls { display: block; }
-    .hotbar-slot { width: 40px; height: 40px; }
-    #overlay h1 { font-size: 24px; }
-  }
+/* Pause Menu */
+#pause-menu {
+  position: fixed; top: 0; left: 0; right: 0; bottom: 0;
+  background: rgba(0,0,0,0.6); display: none; z-index: 30;
+  align-items: center; justify-content: center; flex-direction: column; gap: 12px;
+}
+#pause-menu.open { display: flex; }
+#pause-menu h2 { color: #fff; font-size: 24px; margin-bottom: 8px; }
+#pause-menu button {
+  padding: 10px 40px; font-size: 16px; background: #666; color: #fff;
+  border: 2px solid #444; border-radius: 4px; cursor: pointer; min-width: 200px;
+}
+#pause-menu button:hover { background: #888; }
+
+/* Start Screen */
+#start-screen {
+  position: fixed; top: 0; left: 0; right: 0; bottom: 0;
+  background: linear-gradient(180deg, #1a0a2e 0%, #16213e 50%, #0f3460 100%);
+  display: flex; z-index: 50; align-items: center; justify-content: center;
+  flex-direction: column; gap: 16px;
+}
+#start-screen h1 { color: #fff; font-size: 48px; text-shadow: 3px 3px 0 #333; letter-spacing: 4px; }
+#start-screen p { color: #aaa; font-size: 14px; }
+#start-screen button {
+  padding: 14px 50px; font-size: 20px; background: #4a7c59; color: #fff;
+  border: 3px solid #2d5a3a; border-radius: 4px; cursor: pointer;
+  transition: background 0.2s;
+}
+#start-screen button:hover { background: #5a9c69; }
+#controls-info {
+  color: #888; font-size: 12px; text-align: center; line-height: 1.8;
+  background: rgba(0,0,0,0.3); padding: 16px 24px; border-radius: 6px; margin-top: 12px;
+}
+
+/* Damage overlay */
+#damage-overlay {
+  position: fixed; top: 0; left: 0; right: 0; bottom: 0;
+  background: rgba(255,0,0,0); pointer-events: none; z-index: 8;
+  transition: background 0.1s;
+}
+
+/* Loading */
+#loading {
+  position: fixed; top: 0; left: 0; right: 0; bottom: 0;
+  background: #111; display: none; z-index: 60;
+  align-items: center; justify-content: center; flex-direction: column; gap: 12px;
+}
+#loading.open { display: flex; }
+#loading h2 { color: #fff; font-size: 20px; }
+#loading-bar { width: 300px; height: 20px; background: #333; border-radius: 4px; overflow: hidden; }
+#loading-fill { height: 100%; background: #4a7c59; width: 0%; transition: width 0.3s; }
+#loading-text { color: #aaa; font-size: 12px; }
+
+/* Minimap */
+#minimap {
+  position: absolute; top: 10px; right: 120px; width: 120px; height: 120px;
+  border: 2px solid #555; border-radius: 4px; overflow: hidden;
+  background: rgba(0,0,0,0.5);
+}
+#minimap canvas { width: 100%; height: 100%; }
+
+/* Death screen */
+#death-screen {
+  position: fixed; top: 0; left: 0; right: 0; bottom: 0;
+  background: rgba(128,0,0,0.7); display: none; z-index: 40;
+  align-items: center; justify-content: center; flex-direction: column; gap: 16px;
+}
+#death-screen.open { display: flex; }
+#death-screen h2 { color: #fff; font-size: 36px; }
+#death-screen button {
+  padding: 12px 40px; font-size: 16px; background: #666; color: #fff;
+  border: 2px solid #444; border-radius: 4px; cursor: pointer;
+}
 </style>
 </head>
 <body>
 
-<!-- 加载界面 -->
+<!-- Start Screen -->
+<div id="start-screen">
+  <h1>⛏️ MiniCraft</h1>
+  <p>A Voxel Adventure</p>
+  <button onclick="startGame()">Play World</button>
+  <div id="controls-info">
+    <b>Controls:</b><br>
+    WASD - Move | Space - Jump | Shift - Sprint<br>
+    Mouse - Look | Left Click - Break | Right Click - Place<br>
+    E - Inventory | F - Fly Mode | 1-9 - Hotbar | Q - Drop | ESC - Pause
+  </div>
+</div>
+
+<!-- Loading -->
 <div id="loading">
-  <h2>🏗️ 生成世界中...</h2>
-  <div class="loader"><div class="loader-bar" id="load-bar"></div></div>
-  <p id="load-text" style="margin-top:12px;color:#aaa;font-size:13px;"></p>
+  <h2>Generating World...</h2>
+  <div id="loading-bar"><div id="loading-fill"></div></div>
+  <div id="loading-text">Preparing terrain...</div>
 </div>
 
-<!-- 游戏界面 -->
-<div id="overlay" style="display:none">
-  <h1>🎲 3D 像素方块世界</h1>
-  <p>WASD 移动 · 空格跳跃 · 鼠标控制视角</p>
-  <p>左键放置方块 · 右键破坏方块 · 数字键切换方块</p>
-  <p class="sub">点击任意位置开始游戏</p>
+<!-- Game UI -->
+<div id="crosshair"></div>
+<div id="hud">
+  <div id="health-bar"></div>
+  <div id="hunger-bar"></div>
+  <div id="coords">X: 0 Y: 0 Z: 0</div>
+  <div id="fps-display">FPS: 0</div>
+  <div id="time-display">Day 1 - 12:00</div>
+  <div id="biome-display">Biome: Plains</div>
+  <div id="fly-display">✈ Fly Mode</div>
+  <div id="hotbar"></div>
+  <div id="block-info"></div>
+  <div id="minimap"><canvas id="minimap-canvas" width="120" height="120"></canvas></div>
 </div>
+<div id="damage-overlay"></div>
 
-<div id="crosshair" style="display:none"></div>
-<div id="hud" style="display:none"></div>
-<div id="coords" style="display:none"></div>
-
-<!-- 移动端控制 -->
-<div id="mobile-controls">
-  <div class="joystick-area" id="joystick-left">
-    <div class="joystick-thumb" id="thumb-left"></div>
+<!-- Inventory -->
+<div id="inventory-screen">
+  <div id="inventory-panel">
+    <h3>Inventory</h3>
+    <div id="inv-main"></div>
+    <div id="crafting-area">
+      <h4>Crafting</h4>
+      <div style="display:flex;align-items:center;justify-content:center;gap:8px;">
+        <div class="crafting-grid">
+          <div class="crafting-row"><div class="crafting-slot" data-cx="0" data-cy="0"></div><div class="crafting-slot" data-cx="1" data-cy="0"></div><div class="crafting-slot" data-cx="2" data-cy="0"></div></div>
+          <div class="crafting-row"><div class="crafting-slot" data-cx="0" data-cy="1"></div><div class="crafting-slot" data-cx="1" data-cy="1"></div><div class="crafting-slot" data-cx="2" data-cy="1"></div></div>
+          <div class="crafting-row"><div class="crafting-slot" data-cx="0" data-cy="2"></div><div class="crafting-slot" data-cx="1" data-cy="2"></div><div class="crafting-slot" data-cx="2" data-cy="2"></div></div>
+        </div>
+        <div style="font-size:24px;color:#333;">→</div>
+        <div class="crafting-output" id="crafting-output"></div>
+      </div>
+      <div id="recipe-list"></div>
+    </div>
   </div>
-  <div class="joystick-area" id="joystick-right">
-    <div class="joystick-thumb" id="thumb-right"></div>
-  </div>
-  <button id="btn-jump">跳</button>
-  <button id="btn-break">🔨</button>
-  <button id="btn-place">🧱</button>
 </div>
 
-<!-- Three.js CDN -->
-<script src="https://unpkg.com/three@0.160.0/build/three.min.js"></script>
+<!-- Pause Menu -->
+<div id="pause-menu">
+  <h2>Game Paused</h2>
+  <button onclick="resumeGame()">Resume</button>
+  <button onclick="saveGame()">Save & Quit</button>
+</div>
+
+<!-- Death Screen -->
+<div id="death-screen">
+  <h2>You Died!</h2>
+  <button onclick="respawnPlayer()">Respawn</button>
+</div>
 
 <script>
 // ============================================================
-// 配置常量
+// CONSTANTS & CONFIG
 // ============================================================
-const CONFIG = {
-  CHUNK_SIZE: 16,        // 每个区块尺寸 (方块数)
-  WORLD_HEIGHT: 64,      // 世界高度
-  RENDER_DISTANCE: 4,    // 渲染距离 (区块数)
-  GRAVITY: -25,          // 重力加速度
-  JUMP_SPEED: 9,         // 初始跳跃速度
-  MOVE_SPEED: 5.5,       // 移动速度
-  PLAYER_HEIGHT: 1.7,    // 玩家眼睛高度
-  PLAYER_WIDTH: 0.6,     // 玩家碰撞宽度
-  FOG_NEAR: 30,          // 雾近平面
-  FOG_FAR: 90,           // 雾远平面
-  REACH_DISTANCE: 6,     // 方块交互距离
-  SEA_LEVEL: 12,         // 海平面
-};
-
-// 方块类型定义
-const BLOCK = {
-  AIR: 0,
-  GRASS: 1,
-  DIRT: 2,
-  STONE: 3,
-  SAND: 4,
-  WOOD: 5,
-  LEAVES: 6,
-  WATER: 7,
-  COAL_ORE: 8,
-  IRON_ORE: 9,
-  BEDROCK: 10,
-  SNOW: 11,
-};
-
-// 方块颜色 (用于简易材质)
-const BLOCK_COLORS = {
-  [BLOCK.GRASS]:    { top: 0x5ea13b, side: 0x8b6b3d, bottom: 0x7a5c2f },
-  [BLOCK.DIRT]:     { top: 0x8b6b3d, side: 0x8b6b3d, bottom: 0x7a5c2f },
-  [BLOCK.STONE]:    { top: 0x888888, side: 0x808080, bottom: 0x777777 },
-  [BLOCK.SAND]:     { top: 0xe8d68a, side: 0xd4c07a, bottom: 0xc4b06a },
-  [BLOCK.WOOD]:     { top: 0x9e7744, side: 0x6b4c2a, bottom: 0x9e7744 },
-  [BLOCK.LEAVES]:   { top: 0x3a8c28, side: 0x2d7a1e, bottom: 0x2d7a1e },
-  [BLOCK.WATER]:    { top: 0x3377cc, side: 0x2266bb, bottom: 0x1155aa },
-  [BLOCK.COAL_ORE]: { top: 0x666666, side: 0x555555, bottom: 0x666666 },
-  [BLOCK.IRON_ORE]: { top: 0x9a8a7a, side: 0x8a7a6a, bottom: 0x9a8a7a },
-  [BLOCK.BEDROCK]:  { top: 0x333333, side: 0x2a2a2a, bottom: 0x222222 },
-  [BLOCK.SNOW]:     { top: 0xf0f0f0, side: 0xe0e0e0, bottom: 0xd0d0d0 },
-};
-
-const BLOCK_NAMES = {
-  [BLOCK.GRASS]: '草方块', [BLOCK.DIRT]: '泥土', [BLOCK.STONE]: '石头',
-  [BLOCK.SAND]: '沙子', [BLOCK.WOOD]: '木头', [BLOCK.LEAVES]: '树叶',
-  [BLOCK.WATER]: '水', [BLOCK.COAL_ORE]: '煤矿', [BLOCK.IRON_ORE]: '铁矿',
-  [BLOCK.BEDROCK]: '基岩', [BLOCK.SNOW]: '雪',
-};
-
-// 可放置的方块列表
-const PLACEABLE_BLOCKS = [BLOCK.GRASS, BLOCK.DIRT, BLOCK.STONE, BLOCK.SAND, BLOCK.WOOD, BLOCK.LEAVES, BLOCK.SNOW];
+const CHUNK_SIZE = 16;
+const WORLD_HEIGHT = 128;
+const RENDER_DISTANCE = 6;
+const GRAVITY = -25;
+const JUMP_FORCE = 9;
+const PLAYER_SPEED = 5;
+const SPRINT_MULT = 1.6;
+const FLY_SPEED = 12;
+const REACH_DISTANCE = 6;
+const DAY_LENGTH = 600; // 10 minutes
 
 // ============================================================
-// 全局状态
+// BLOCK TYPES
 // ============================================================
-let scene, camera, renderer, clock;
-let chunks = new Map();          // 区块地图
-let player = {
-  position: new THREE.Vector3(8, 30, 8),
-  velocity: new THREE.Vector3(0, 0, 0),
-  onGround: false,
-  yaw: 0, pitch: 0,
+const B = {
+  AIR: 0, GRASS: 1, DIRT: 2, STONE: 3, SAND: 4, SNOW: 5, WATER: 6,
+  OAK_LOG: 7, OAK_PLANKS: 8, OAK_LEAVES: 9, COBBLESTONE: 10,
+  COAL_ORE: 11, IRON_ORE: 12, GOLD_ORE: 13, DIAMOND_ORE: 14,
+  BEDROCK: 15, BRICKS: 16, GLASS: 17, CRAFTING_TABLE: 18, FURNACE: 19,
+  CHEST: 20, TORCH: 21, GLOWSTONE: 22, BIRCH_LOG: 23, BIRCH_PLANKS: 24,
+  BIRCH_LEAVES: 25, ICE: 26, CLAY: 27, OBSIDIAN: 28
 };
-let selectedBlock = 0;           // 当前选中方块索引
-let isLocked = false;
-let moveInput = { fwd: 0, right: 0 };
-let jumpPressed = false;
 
-// 噪声函数种子
-const SEED = Math.random() * 10000;
+const BLOCK_NAMES = {};
+const BLOCK_COLORS = {};
+const BLOCK_TRANSPARENT = {};
+const BLOCK_SOLID = {};
+const BLOCK_HARDNESS = {};
+
+function defBlock(id, name, color, transparent=false, solid=true, hardness=1) {
+  BLOCK_NAMES[id] = name;
+  BLOCK_COLORS[id] = color;
+  BLOCK_TRANSPARENT[id] = transparent;
+  BLOCK_SOLID[id] = solid;
+  BLOCK_HARDNESS[id] = hardness;
+}
+
+defBlock(B.AIR, 'Air', '#000000', true, false, 0);
+defBlock(B.GRASS, 'Grass', '#5a8f29');
+defBlock(B.DIRT, 'Dirt', '#8b6914');
+defBlock(B.STONE, 'Stone', '#808080', false, true, 3);
+defBlock(B.SAND, 'Sand', '#e8d68a');
+defBlock(B.SNOW, 'Snow', '#f0f0f0');
+defBlock(B.WATER, 'Water', '#3366cc', true, false, 0);
+defBlock(B.OAK_LOG, 'Oak Log', '#6b4226');
+defBlock(B.OAK_PLANKS, 'Oak Planks', '#bc9862');
+defBlock(B.OAK_LEAVES, 'Oak Leaves', '#2d7a1e', true);
+defBlock(B.COBBLESTONE, 'Cobblestone', '#7a7a7a', false, true, 2);
+defBlock(B.COAL_ORE, 'Coal Ore', '#3a3a3a', false, true, 3);
+defBlock(B.IRON_ORE, 'Iron Ore', '#c4a882', false, true, 3);
+defBlock(B.GOLD_ORE, 'Gold Ore', '#fcdb58', false, true, 3);
+defBlock(B.DIAMOND_ORE, 'Diamond Ore', '#5cd6e8', false, true, 3);
+defBlock(B.BEDROCK, 'Bedrock', '#2a2a2a', false, true, 999);
+defBlock(B.BRICKS, 'Bricks', '#9b4a3c');
+defBlock(B.GLASS, 'Glass', '#c8e8ff', true);
+defBlock(B.CRAFTING_TABLE, 'Crafting Table', '#8b5a2b');
+defBlock(B.FURNACE, 'Furnace', '#6a6a6a');
+defBlock(B.CHEST, 'Chest', '#b8860b');
+defBlock(B.TORCH, 'Torch', '#ffcc00', true, false, 0);
+defBlock(B.GLOWSTONE, 'Glowstone', '#ffdd44', true);
+defBlock(B.BIRCH_LOG, 'Birch Log', '#d4c8a0');
+defBlock(B.BIRCH_PLANKS, 'Birch Planks', '#c8b878');
+defBlock(B.BIRCH_LEAVES, 'Birch Leaves', '#4a9e2e', true);
+defBlock(B.ICE, 'Ice', '#aaddff', true);
+defBlock(B.CLAY, 'Clay', '#a0a0b0');
+defBlock(B.OBSIDIAN, 'Obsidian', '#1a0a2e', false, true, 50);
+
+// Block icon colors (lighter variants for UI)
+const BLOCK_UI_COLORS = {};
+Object.keys(BLOCK_COLORS).forEach(k => {
+  const c = BLOCK_COLORS[k];
+  BLOCK_UI_COLORS[k] = c;
+});
 
 // ============================================================
-// 简易 Perlin 噪声 (用于地形生成)
+// PERLIN NOISE
 // ============================================================
 class PerlinNoise {
   constructor(seed) {
-    this.perm = new Uint8Array(512);
-    const p = new Uint8Array(256);
-    for (let i = 0; i < 256; i++) p[i] = i;
-    // Fisher-Yates shuffle with seed
-    let s = seed * 2147483647;
+    this.p = new Uint8Array(512);
+    const perm = new Uint8Array(256);
+    for (let i = 0; i < 256; i++) perm[i] = i;
+    seed = seed || Math.random() * 65536;
     for (let i = 255; i > 0; i--) {
-      s = (s * 16807) % 2147483647;
-      const j = s % (i + 1);
-      [p[i], p[j]] = [p[j], p[i]];
+      seed = (seed * 16807 + 0) % 2147483647;
+      const j = seed % (i + 1);
+      [perm[i], perm[j]] = [perm[j], perm[i]];
     }
-    for (let i = 0; i < 512; i++) this.perm[i] = p[i & 255];
+    for (let i = 0; i < 512; i++) this.p[i] = perm[i & 255];
   }
   fade(t) { return t * t * t * (t * (t * 6 - 15) + 10); }
   lerp(a, b, t) { return a + t * (b - a); }
-  grad(hash, x, y) {
-    const h = hash & 3;
-    return (h === 0 ? x + y : h === 1 ? -x + y : h === 2 ? x - y : -x - y);
+  grad(hash, x, y, z) {
+    const h = hash & 15;
+    const u = h < 8 ? x : y;
+    const v = h < 4 ? y : (h === 12 || h === 14 ? x : z);
+    return ((h & 1) === 0 ? u : -u) + ((h & 2) === 0 ? v : -v);
   }
-  noise2D(x, y) {
-    const X = Math.floor(x) & 255, Y = Math.floor(y) & 255;
-    const xf = x - Math.floor(x), yf = y - Math.floor(y);
-    const u = this.fade(xf), v = this.fade(yf);
-    const p = this.perm;
-    const aa = p[p[X] + Y], ab = p[p[X] + Y + 1];
-    const ba = p[p[X + 1] + Y], bb = p[p[X + 1] + Y + 1];
+  noise3d(x, y, z) {
+    const X = Math.floor(x) & 255, Y = Math.floor(y) & 255, Z = Math.floor(z) & 255;
+    x -= Math.floor(x); y -= Math.floor(y); z -= Math.floor(z);
+    const u = this.fade(x), v = this.fade(y), w = this.fade(z);
+    const p = this.p;
+    const A = p[X] + Y, AA = p[A] + Z, AB = p[A + 1] + Z;
+    const B = p[X + 1] + Y, BA = p[B] + Z, BB = p[B + 1] + Z;
     return this.lerp(
-      this.lerp(this.grad(aa, xf, yf), this.grad(ba, xf - 1, yf), u),
-      this.lerp(this.grad(ab, xf, yf - 1), this.grad(bb, xf - 1, yf - 1), u),
-      v
-    );
+      this.lerp(this.lerp(this.grad(p[AA], x, y, z), this.grad(p[BA], x - 1, y, z), u),
+                this.lerp(this.grad(p[AB], x, y - 1, z), this.grad(p[BB], x - 1, y - 1, z), u), v),
+      this.lerp(this.lerp(this.grad(p[AA + 1], x, y, z - 1), this.grad(p[BA + 1], x - 1, y, z - 1), u),
+                this.lerp(this.grad(p[AB + 1], x, y - 1, z - 1), this.grad(p[BB + 1], x - 1, y - 1, z - 1), u), v), w);
   }
-  // 分形噪声
-  fbm(x, y, octaves = 4, lacunarity = 2, persistence = 0.5) {
+  fbm(x, y, z, octaves = 4, lacunarity = 2, persistence = 0.5) {
     let val = 0, amp = 1, freq = 1, max = 0;
     for (let i = 0; i < octaves; i++) {
-      val += this.noise2D(x * freq, y * freq) * amp;
-      max += amp;
-      amp *= persistence;
-      freq *= lacunarity;
+      val += this.noise3d(x * freq, y * freq, z * freq) * amp;
+      max += amp; amp *= persistence; freq *= lacunarity;
     }
     return val / max;
   }
 }
 
-const perlin = new PerlinNoise(SEED);
-
 // ============================================================
-// 工具函数
+// BIOMES
 // ============================================================
-function chunkKey(cx, cz) { return `${cx},${cz}`; }
-
-function getChunkCoord(x) { return Math.floor(x / CONFIG.CHUNK_SIZE); }
-
-// ============================================================
-// 世界生成
-// ============================================================
-function generateChunkData(cx, cz) {
-  const data = new Uint8Array(CONFIG.CHUNK_SIZE * CONFIG.WORLD_HEIGHT * CONFIG.CHUNK_SIZE);
-  const offsetX = cx * CONFIG.CHUNK_SIZE;
-  const offsetZ = cz * CONFIG.CHUNK_SIZE;
-
-  for (let lx = 0; lx < CONFIG.CHUNK_SIZE; lx++) {
-    for (let lz = 0; lz < CONFIG.CHUNK_SIZE; lz++) {
-      const wx = offsetX + lx;
-      const wz = offsetZ + lz;
-
-      // 地形高度: 使用多层噪声
-      const n1 = perlin.fbm(wx * 0.008, wz * 0.008, 4) * 20;
-      const n2 = perlin.fbm(wx * 0.03, wz * 0.03, 2) * 6;
-      const n3 = perlin.fbm(wx * 0.08, wz * 0.08, 2) * 2;
-      let height = Math.floor(18 + n1 + n2 + n3);
-      height = Math.max(1, Math.min(CONFIG.WORLD_HEIGHT - 2, height));
-
-      // 湿度和温度噪声
-      const moisture = perlin.fbm(wx * 0.005, wz * 0.005, 3);
-      const temperature = perlin.fbm(wx * 0.006 + 500, wz * 0.006 + 500, 3);
-
-      for (let y = 0; y < CONFIG.WORLD_HEIGHT; y++) {
-        const idx = lx + y * CONFIG.CHUNK_SIZE + lz * CONFIG.CHUNK_SIZE * CONFIG.WORLD_HEIGHT;
-
-        if (y === 0) {
-          data[idx] = BLOCK.BEDROCK; // 基岩层
-        } else if (y < height - 4) {
-          // 深层: 石头 + 矿石
-          data[idx] = BLOCK.STONE;
-          // 矿石生成
-          const oreNoise = perlin.noise2D(wx * 0.15 + y * 0.3, wz * 0.15);
-          if (y < 20 && oreNoise > 0.65) data[idx] = BLOCK.IRON_ORE;
-          else if (y < 35 && oreNoise > 0.6) data[idx] = BLOCK.COAL_ORE;
-        } else if (y < height) {
-          // 中层: 泥土
-          data[idx] = BLOCK.DIRT;
-        } else if (y === height) {
-          // 表层
-          if (height <= CONFIG.SEA_LEVEL + 1) {
-            data[idx] = BLOCK.SAND;
-          } else if (temperature > 0.3 && height > 35) {
-            data[idx] = BLOCK.SNOW;
-          } else {
-            data[idx] = BLOCK.GRASS;
-          }
-        } else if (y <= CONFIG.SEA_LEVEL && y > height) {
-          data[idx] = BLOCK.WATER;
-        }
-      }
-
-      // 树木生成
-      if (height > CONFIG.SEA_LEVEL + 2 && height < 35) {
-        const treeNoise = perlin.noise2D(wx * 0.5 + 1000, wz * 0.5 + 1000);
-        if (treeNoise > 0.55 && lx > 1 && lx < CONFIG.CHUNK_SIZE - 2 && lz > 1 && lz < CONFIG.CHUNK_SIZE - 2) {
-          const treeH = 4 + Math.floor(Math.abs(perlin.noise2D(wx, wz)) * 3);
-          // 树干
-          for (let ty = 1; ty <= treeH; ty++) {
-            const y = height + ty;
-            if (y < CONFIG.WORLD_HEIGHT) {
-              data[lx + y * CONFIG.CHUNK_SIZE + lz * CONFIG.CHUNK_SIZE * CONFIG.WORLD_HEIGHT] = BLOCK.WOOD;
-            }
-          }
-          // 树叶
-          const leafBase = height + treeH - 1;
-          for (let ly = 0; ly <= 2; ly++) {
-            const radius = ly < 2 ? 2 : 1;
-            for (let dx = -radius; dx <= radius; dx++) {
-              for (let dz = -radius; dz <= radius; dz++) {
-                if (dx === 0 && dz === 0 && ly < 2) continue; // 树干位置
-                const nlx = lx + dx, nlz = lz + dz, ny = leafBase + ly;
-                if (nlx >= 0 && nlx < CONFIG.CHUNK_SIZE && nlz >= 0 && nlz < CONFIG.CHUNK_SIZE && ny < CONFIG.WORLD_HEIGHT) {
-                  if (Math.abs(dx) + Math.abs(dz) < radius + 2) {
-                    const i2 = nlx + ny * CONFIG.CHUNK_SIZE + nlz * CONFIG.CHUNK_SIZE * CONFIG.WORLD_HEIGHT;
-                    if (data[i2] === BLOCK.AIR) data[i2] = BLOCK.LEAVES;
-                  }
-                }
-              }
-            }
-          }
-        }
-      }
-    }
-  }
-  return data;
-}
-
-// ============================================================
-// 区块网格构建
-// ============================================================
-// 方块面的顶点数据 (6个面, 每个面2个三角形)
-const FACE_DIRS = [
-  { dir: [0, 1, 0], corners: [[0,1,1],[1,1,1],[1,1,0],[0,1,0]], type: 'top' },    // 上
-  { dir: [0,-1, 0], corners: [[0,0,0],[1,0,0],[1,0,1],[0,0,1]], type: 'bottom' }, // 下
-  { dir: [1, 0, 0], corners: [[1,0,0],[1,1,0],[1,1,1],[1,0,1]], type: 'side' },   // 右
-  { dir: [-1, 0, 0], corners: [[0,0,1],[0,1,1],[0,1,0],[0,0,0]], type: 'side' },  // 左
-  { dir: [0, 0, 1], corners: [[0,0,1],[1,0,1],[1,1,1],[0,1,1]], type: 'side' },   // 前
-  { dir: [0, 0,-1], corners: [[1,0,0],[0,0,0],[0,1,0],[1,1,0]], type: 'side' },   // 后
-];
-
-function buildChunkMesh(cx, cz, chunkData) {
-  const positions = [];
-  const normals = [];
-  const colors = [];
-  const indices = [];
-  let vertexCount = 0;
-
-  const ox = cx * CONFIG.CHUNK_SIZE;
-  const oz = cz * CONFIG.CHUNK_SIZE;
-
-  for (let y = 0; y < CONFIG.WORLD_HEIGHT; y++) {
-    for (let z = 0; z < CONFIG.CHUNK_SIZE; z++) {
-      for (let x = 0; x < CONFIG.CHUNK_SIZE; x++) {
-        const blockType = chunkData[x + y * CONFIG.CHUNK_SIZE + z * CONFIG.CHUNK_SIZE * CONFIG.WORLD_HEIGHT];
-        if (blockType === BLOCK.AIR) continue;
-
-        const isTransparent = blockType === BLOCK.WATER || blockType === BLOCK.LEAVES;
-
-        for (const face of FACE_DIRS) {
-          const nx = x + face.dir[0];
-          const ny = y + face.dir[1];
-          const nz = z + face.dir[2];
-
-          let neighbor = BLOCK.AIR;
-          if (nx >= 0 && nx < CONFIG.CHUNK_SIZE && ny >= 0 && ny < CONFIG.WORLD_HEIGHT && nz >= 0 && nz < CONFIG.CHUNK_SIZE) {
-            neighbor = chunkData[nx + ny * CONFIG.CHUNK_SIZE + nz * CONFIG.CHUNK_SIZE * CONFIG.WORLD_HEIGHT];
-          }
-
-          // 邻居是空气或不同透明度的方块时渲染该面
-          const neighborTransparent = neighbor === BLOCK.AIR || (isTransparent && neighbor !== blockType);
-          if (!neighborTransparent) continue;
-
-          const bc = BLOCK_COLORS[blockType];
-          const c = new THREE.Color(bc[face.type]);
-
-          // 简单的环境遮蔽
-          if (face.dir[1] === -1) c.multiplyScalar(0.6); // 底面暗
-          else if (face.dir[1] === 0) c.multiplyScalar(0.8); // 侧面中
-
-          for (const corner of face.corners) {
-            positions.push(x + corner[0], y + corner[1], z + corner[2]);
-            normals.push(face.dir[0], face.dir[1], face.dir[2]);
-            colors.push(c.r, c.g, c.b);
-          }
-
-          indices.push(
-            vertexCount, vertexCount + 1, vertexCount + 2,
-            vertexCount, vertexCount + 2, vertexCount + 3
-          );
-          vertexCount += 4;
-        }
-      }
-    }
-  }
-
-  if (positions.length === 0) return null;
-
-  const geometry = new THREE.BufferGeometry();
-  geometry.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3));
-  geometry.setAttribute('normal', new THREE.Float32BufferAttribute(normals, 3));
-  geometry.setAttribute('color', new THREE.Float32BufferAttribute(colors, 3));
-  geometry.setIndex(indices);
-
-  const material = new THREE.MeshLambertMaterial({
-    vertexColors: true,
-    side: THREE.FrontSide,
-  });
-
-  return new THREE.Mesh(geometry, material);
-}
-
-// ============================================================
-// "BAOBAO" 像素文字墙
-// ============================================================
-// 使用 5x7 像素字体定义每个字母
-const PIXEL_FONT = {
-  'B': [
-    [1,1,1,1,0],
-    [1,0,0,0,1],
-    [1,0,0,0,1],
-    [1,1,1,1,0],
-    [1,0,0,0,1],
-    [1,0,0,0,1],
-    [1,1,1,1,0],
-  ],
-  'A': [
-    [0,1,1,1,0],
-    [1,0,0,0,1],
-    [1,0,0,0,1],
-    [1,1,1,1,1],
-    [1,0,0,0,1],
-    [1,0,0,0,1],
-    [1,0,0,0,1],
-  ],
-  'O': [
-    [0,1,1,1,0],
-    [1,0,0,0,1],
-    [1,0,0,0,1],
-    [1,0,0,0,1],
-    [1,0,0,0,1],
-    [1,0,0,0,1],
-    [0,1,1,1,0],
-  ],
+const BIOME = {
+  PLAINS: 0, FOREST: 1, DESERT: 2, MOUNTAINS: 3, SNOW: 4, OCEAN: 5
 };
 
-function buildTextWall(text, blockType) {
-  const group = new THREE.Group();
-  const color = BLOCK_COLORS[blockType].top;
-  const material = new THREE.MeshLambertMaterial({ color });
+// ============================================================
+// GAME STATE
+// ============================================================
+let world = {}; // key: "x,z" -> Uint8Array(CHUNK_SIZE * WORLD_HEIGHT * CHUNK_SIZE)
+let modifiedBlocks = {}; // key: "x,y,z" -> blockId (overrides)
+let chunks = {}; // key: "x,z" -> THREE.Group mesh
+let waterChunks = {};
+let player = {
+  x: 8, y: 80, z: 8, vx: 0, vy: 0, vz: 0,
+  onGround: false, inWater: false,
+  health: 20, hunger: 20, oxygen: 15,
+  flyMode: false, sprinting: false,
+  yaw: 0, pitch: 0,
+  selectedSlot: 0,
+  inventory: new Array(36).fill(null), // {id, count}
+  fallStartY: 80, lastDamageTime: 0,
+  breathTimer: 0
+};
+let gameTime = DAY_LENGTH * 0.25; // start at noon
+let dayCount = 1;
+let paused = false;
+let inventoryOpen = false;
+let gameStarted = false;
+let craftingGrid = new Array(9).fill(null);
+let craftingOutput = null;
+let heldItem = null; // item being carried by cursor in inventory
+let mobs = [];
+let selectedBlock = B.OAK_PLANKS;
+let mouseDown = { left: false, right: false };
+let breakProgress = 0;
+let breakTarget = null;
 
-  let offsetX = 0;
-  const letterWidth = 6; // 5 pixels + 1 space
-  const totalWidth = text.length * letterWidth;
-  const startX = -totalWidth / 2;
+const perlin1 = new PerlinNoise(Date.now());
+const perlin2 = new PerlinNoise(Date.now() + 1000);
+const perlin3 = new PerlinNoise(Date.now() + 2000);
 
-  for (const ch of text) {
-    const glyph = PIXEL_FONT[ch];
-    if (!glyph) { offsetX += letterWidth; continue; }
+// ============================================================
+// THREE.JS SETUP
+// ============================================================
+const scene = new THREE.Scene();
+const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+const renderer = new THREE.WebGLRenderer({ antialias: false, alpha: false });
+renderer.setSize(window.innerWidth, window.innerHeight);
+renderer.setClearColor(0x87CEEB);
+document.body.appendChild(renderer.domElement);
 
-    for (let row = 0; row < glyph.length; row++) {
-      for (let col = 0; col < glyph[row].length; col++) {
-        if (glyph[row][col]) {
-          const geo = new THREE.BoxGeometry(1, 1, 1);
-          const cube = new THREE.Mesh(geo, material);
-          cube.position.set(
-            startX + offsetX + col,
-            row + 1,  // 从地面起
-            0
-          );
-          cube.castShadow = true;
-          cube.receiveShadow = true;
-          group.add(cube);
+const ambientLight = new THREE.AmbientLight(0xffffff, 0.6);
+scene.add(ambientLight);
+const dirLight = new THREE.DirectionalLight(0xffffff, 0.8);
+dirLight.position.set(100, 200, 100);
+scene.add(dirLight);
+
+const fogColor = new THREE.Color(0x87CEEB);
+scene.fog = new THREE.Fog(fogColor, 60, CHUNK_SIZE * RENDER_DISTANCE);
+
+// Sky dome
+const skyGeo = new THREE.SphereGeometry(400, 16, 12);
+const skyMat = new THREE.MeshBasicMaterial({ color: 0x87CEEB, side: THREE.BackSide });
+const skyDome = new THREE.Mesh(skyGeo, skyMat);
+scene.add(skyDome);
+
+// Sun/Moon
+const sunGeo = new THREE.SphereGeometry(15, 8, 8);
+const sunMat = new THREE.MeshBasicMaterial({ color: 0xffff00 });
+const sun = new THREE.Mesh(sunGeo, sunMat);
+scene.add(sun);
+const moonGeo = new THREE.SphereGeometry(10, 8, 8);
+const moonMat = new THREE.MeshBasicMaterial({ color: 0xddddee });
+const moon = new THREE.Mesh(moonGeo, moonMat);
+scene.add(moon);
+
+// Clouds
+const cloudGroup = new THREE.Group();
+scene.add(cloudGroup);
+
+// Block highlight wireframe
+const highlightGeo = new THREE.BoxGeometry(1.01, 1.01, 1.01);
+const highlightMat = new THREE.MeshBasicMaterial({ color: 0x000000, wireframe: true, transparent: true, opacity: 0.4 });
+const highlightMesh = new THREE.Mesh(highlightGeo, highlightMat);
+highlightMesh.visible = false;
+scene.add(highlightMesh);
+
+// ============================================================
+// CHUNK ACCESS
+// ============================================================
+function chunkKey(cx, cz) { return `${cx},${cz}`; }
+function blockKey(x, y, z) { return `${x},${y},${z}`; }
+
+function getChunk(cx, cz) {
+  const key = chunkKey(cx, cz);
+  if (!world[key]) {
+    world[key] = new Uint8Array(CHUNK_SIZE * WORLD_HEIGHT * CHUNK_SIZE);
+    generateChunk(cx, cz);
+  }
+  return world[key];
+}
+
+function blockIndex(lx, ly, lz) {
+  return (ly * CHUNK_SIZE + lz) * CHUNK_SIZE + lx;
+}
+
+function getBlock(x, y, z) {
+  if (y < 0 || y >= WORLD_HEIGHT) return B.AIR;
+  const modKey = blockKey(x, y, z);
+  if (modifiedBlocks[modKey] !== undefined) return modifiedBlocks[modKey];
+  const cx = Math.floor(x / CHUNK_SIZE);
+  const cz = Math.floor(z / CHUNK_SIZE);
+  const key = chunkKey(cx, cz);
+  const chunk = world[key];
+  if (!chunk) return B.AIR;
+  const lx = ((x % CHUNK_SIZE) + CHUNK_SIZE) % CHUNK_SIZE;
+  const lz = ((z % CHUNK_SIZE) + CHUNK_SIZE) % CHUNK_SIZE;
+  return chunk[blockIndex(lx, y, lz)];
+}
+
+function setBlock(x, y, z, blockId) {
+  if (y < 0 || y >= WORLD_HEIGHT) return;
+  const modKey = blockKey(x, y, z);
+  modifiedBlocks[modKey] = blockId;
+  const cx = Math.floor(x / CHUNK_SIZE);
+  const cz = Math.floor(z / CHUNK_SIZE);
+  const key = chunkKey(cx, cz);
+  if (world[key]) {
+    const lx = ((x % CHUNK_SIZE) + CHUNK_SIZE) % CHUNK_SIZE;
+    const lz = ((z % CHUNK_SIZE) + CHUNK_SIZE) % CHUNK_SIZE;
+    world[key][blockIndex(lx, y, lz)] = blockId;
+  }
+  // Rebuild this chunk and neighbors
+  rebuildChunkMesh(cx, cz);
+  if (lx === 0) rebuildChunkMesh(cx - 1, cz);
+  if (lx === CHUNK_SIZE - 1) rebuildChunkMesh(cx + 1, cz);
+  if (lz === 0) rebuildChunkMesh(cx, cz - 1);
+  if (lz === CHUNK_SIZE - 1) rebuildChunkMesh(cx, cz + 1);
+}
+
+// ============================================================
+// TERRAIN GENERATION
+// ============================================================
+function getBiome(x, z) {
+  const val = perlin2.fbm(x * 0.005, 0, z * 0.005, 3);
+  const moisture = perlin3.fbm(x * 0.008, 0, z * 0.008, 3);
+  const elevation = perlin1.fbm(x * 0.003, 0, z * 0.003, 4);
+
+  if (elevation < -0.3) return BIOME.OCEAN;
+  if (elevation > 0.4) return BIOME.MOUNTAINS;
+  if (moisture < -0.2) return BIOME.DESERT;
+  if (val > 0.2 && moisture > 0.1) return BIOME.FOREST;
+  if (val < -0.3) return BIOME.SNOW;
+  return BIOME.PLAINS;
+}
+
+function getTerrainHeight(x, z) {
+  const biome = getBiome(x, z);
+  let baseHeight = 64;
+  let noise1 = perlin1.fbm(x * 0.01, 0, z * 0.01, 4);
+  let noise2 = perlin2.fbm(x * 0.02, 0, z * 0.02, 3);
+  let noise3 = perlin1.fbm(x * 0.005, 0, z * 0.005, 2);
+
+  switch (biome) {
+    case BIOME.PLAINS: baseHeight = 64 + noise1 * 6; break;
+    case BIOME.FOREST: baseHeight = 66 + noise1 * 8; break;
+    case BIOME.DESERT: baseHeight = 62 + noise1 * 4; break;
+    case BIOME.MOUNTAINS: baseHeight = 80 + noise1 * 30 + noise2 * 10; break;
+    case BIOME.SNOW: baseHeight = 72 + noise1 * 12; break;
+    case BIOME.OCEAN: baseHeight = 56 + noise1 * 4; break;
+  }
+
+  // Cave carving
+  if (baseHeight > 60) {
+    const caveNoise = perlin3.fbm(x * 0.05, 0.5, z * 0.05, 3);
+    if (Math.abs(caveNoise) < 0.05 && baseHeight > 68) {
+      baseHeight = Math.max(64, baseHeight - 8);
+    }
+  }
+
+  return Math.floor(Math.min(Math.max(baseHeight, 1), WORLD_HEIGHT - 2));
+}
+
+function generateChunk(cx, cz) {
+  const key = chunkKey(cx, cz);
+  const chunk = world[key];
+  const worldX = cx * CHUNK_SIZE;
+  const worldZ = cz * CHUNK_SIZE;
+
+  for (let lx = 0; lx < CHUNK_SIZE; lx++) {
+    for (let lz = 0; lz < CHUNK_SIZE; lz++) {
+      const wx = worldX + lx;
+      const wz = worldZ + lz;
+      const height = getTerrainHeight(wx, wz);
+      const biome = getBiome(wx, wz);
+
+      for (let y = 0; y < WORLD_HEIGHT; y++) {
+        let block = B.AIR;
+        const modKey = blockKey(wx, y, wz);
+        if (modifiedBlocks[modKey] !== undefined) {
+          chunk[blockIndex(lx, y, lz)] = modifiedBlocks[modKey];
+          continue;
+        }
+
+        if (y === 0) {
+          block = B.BEDROCK;
+        } else if (y < height - 4) {
+          block = B.STONE;
+          // Ore generation
+          if (y < 40) {
+            const oreNoise = perlin3.noise3d(wx * 0.1, y * 0.1, wz * 0.1);
+            if (y < 12 && oreNoise > 0.7) block = B.DIAMOND_ORE;
+            else if (y < 20 && oreNoise > 0.65) block = B.GOLD_ORE;
+            else if (y < 30 && oreNoise > 0.6) block = B.IRON_ORE;
+            else if (oreNoise > 0.55) block = B.COAL_ORE;
+          }
+          // Cave carving with 3D noise
+          const caveVal = perlin3.fbm(wx * 0.04, y * 0.06, wz * 0.04, 3);
+          const caveVal2 = perlin2.fbm(wx * 0.03, y * 0.05, wz * 0.03, 2);
+          if (Math.abs(caveVal) < 0.06 && y > 5 && y < height - 5) {
+            block = B.AIR;
+          }
+          if (Math.abs(caveVal2) < 0.04 && y > 10 && y < height - 8) {
+            block = B.AIR;
+          }
+        } else if (y < height) {
+          block = B.DIRT;
+        } else if (y === height) {
+          switch (biome) {
+            case BIOME.PLAINS: block = B.GRASS; break;
+            case BIOME.FOREST: block = B.GRASS; break;
+            case BIOME.DESERT: block = B.SAND; break;
+            case BIOME.MOUNTAINS: block = height > 95 ? B.SNOW : B.STONE; break;
+            case BIOME.SNOW: block = B.SNOW; break;
+            case BIOME.OCEAN: block = B.SAND; break;
+          }
+        } else if (y <= 60 && y > height) {
+          // Water fill for ocean
+          if (biome === BIOME.OCEAN && y <= 60) {
+            block = B.WATER;
+          }
+        }
+
+        chunk[blockIndex(lx, y, lz)] = block;
+      }
+    }
+  }
+
+  // Generate trees
+  generateTrees(cx, cz);
+  // Generate villages in plains
+  generateVillage(cx, cz);
+}
+
+function generateTrees(cx, cz) {
+  const worldX = cx * CHUNK_SIZE;
+  const worldZ = cz * CHUNK_SIZE;
+
+  for (let i = 0; i < 8; i++) {
+    const tx = worldX + Math.floor(Math.abs(perlin1.noise3d(cx * 10 + i, 0, cz * 10)) * CHUNK_SIZE) % CHUNK_SIZE;
+    const tz = worldZ + Math.floor(Math.abs(perlin2.noise3d(cx * 10, 0, cz * 10 + i)) * CHUNK_SIZE) % CHUNK_SIZE;
+    const biome = getBiome(tx, tz);
+    if (biome === BIOME.DESERT || biome === BIOME.OCEAN || biome === BIOME.MOUNTAINS) continue;
+
+    const height = getTerrainHeight(tx, tz);
+    if (height < 62 || height > 90) continue;
+
+    const isBirch = Math.random() > 0.6;
+    const logBlock = isBirch ? B.BIRCH_LOG : B.OAK_LOG;
+    const leavesBlock = isBirch ? B.BIRCH_LEAVES : B.OAK_LEAVES;
+    const treeHeight = 5 + Math.floor(Math.random() * 3);
+
+    // Trunk
+    for (let ty = 1; ty <= treeHeight; ty++) {
+      const modKey = blockKey(tx, height + ty, tz);
+      if (modifiedBlocks[modKey] !== undefined) continue;
+      setBlockDirect(tx, height + ty, tz, logBlock);
+    }
+
+    // Leaves
+    for (let ly = treeHeight - 2; ly <= treeHeight + 1; ly++) {
+      const radius = ly === treeHeight + 1 ? 1 : 2;
+      for (let dx = -radius; dx <= radius; dx++) {
+        for (let dz = -radius; dz <= radius; dz++) {
+          if (dx === 0 && dz === 0 && ly <= treeHeight) continue;
+          if (Math.abs(dx) === radius && Math.abs(dz) === radius && Math.random() > 0.6) continue;
+          const modKey = blockKey(tx + dx, height + ly, tz + dz);
+          if (modifiedBlocks[modKey] !== undefined) continue;
+          if (getBlock(tx + dx, height + ly, tz + dz) === B.AIR) {
+            setBlockDirect(tx + dx, height + ly, tz + dz, leavesBlock);
+          }
         }
       }
     }
-    offsetX += letterWidth;
   }
-
-  return group;
 }
 
-// ============================================================
-// 方块世界管理
-// ============================================================
-function getBlock(wx, wy, wz) {
-  const cx = getChunkCoord(wx);
-  const cz = getChunkCoord(wz);
+function setBlockDirect(x, y, z, blockId) {
+  const cx = Math.floor(x / CHUNK_SIZE);
+  const cz = Math.floor(z / CHUNK_SIZE);
   const key = chunkKey(cx, cz);
-  const chunk = chunks.get(key);
-  if (!chunk) return BLOCK.AIR;
-  const lx = ((wx % CONFIG.CHUNK_SIZE) + CONFIG.CHUNK_SIZE) % CONFIG.CHUNK_SIZE;
-  const lz = ((wz % CONFIG.CHUNK_SIZE) + CONFIG.CHUNK_SIZE) % CONFIG.CHUNK_SIZE;
-  if (wy < 0 || wy >= CONFIG.WORLD_HEIGHT) return BLOCK.AIR;
-  return chunk.data[lx + wy * CONFIG.CHUNK_SIZE + lz * CONFIG.CHUNK_SIZE * CONFIG.WORLD_HEIGHT];
-}
-
-function setBlock(wx, wy, wz, blockType) {
-  const cx = getChunkCoord(wx);
-  const cz = getChunkCoord(wz);
-  const key = chunkKey(cx, cz);
-  const chunk = chunks.get(key);
+  const chunk = world[key];
   if (!chunk) return;
-  const lx = ((wx % CONFIG.CHUNK_SIZE) + CONFIG.CHUNK_SIZE) % CONFIG.CHUNK_SIZE;
-  const lz = ((wz % CONFIG.CHUNK_SIZE) + CONFIG.CHUNK_SIZE) % CONFIG.CHUNK_SIZE;
-  if (wy < 0 || wy >= CONFIG.WORLD_HEIGHT) return;
-  chunk.data[lx + wy * CONFIG.CHUNK_SIZE + lz * CONFIG.CHUNK_SIZE * CONFIG.WORLD_HEIGHT] = blockType;
-  chunk.dirty = true;
-
-  // 标记相邻区块为脏 (边界处)
-  if (lx === 0) markChunkDirty(cx - 1, cz);
-  if (lx === CONFIG.CHUNK_SIZE - 1) markChunkDirty(cx + 1, cz);
-  if (lz === 0) markChunkDirty(cx, cz - 1);
-  if (lz === CONFIG.CHUNK_SIZE - 1) markChunkDirty(cx, cz + 1);
+  const lx = ((x % CHUNK_SIZE) + CHUNK_SIZE) % CHUNK_SIZE;
+  const lz = ((z % CHUNK_SIZE) + CHUNK_SIZE) % CHUNK_SIZE;
+  chunk[blockIndex(lx, y, lz)] = blockId;
 }
 
-function markChunkDirty(cx, cz) {
-  const key = chunkKey(cx, cz);
-  const chunk = chunks.get(key);
-  if (chunk) chunk.dirty = true;
-}
+function generateVillage(cx, cz) {
+  // Check if this chunk should have a village
+  const wx = cx * CHUNK_SIZE + 8;
+  const wz = cz * CHUNK_SIZE + 8;
+  const villageNoise = perlin1.noise3d(wx * 0.001, 0, wz * 0.001);
+  if (Math.abs(villageNoise) > 0.15) return;
+  if (getBiome(wx, wz) !== BIOME.PLAINS) return;
+  if (getTerrainHeight(wx, wz) < 64 || getTerrainHeight(wx, wz) > 72) return;
 
-function ensureChunk(cx, cz) {
-  const key = chunkKey(cx, cz);
-  if (chunks.has(key)) return chunks.get(key);
-  const data = generateChunkData(cx, cz);
-  const chunk = { data, mesh: null, dirty: true };
-  chunks.set(key, chunk);
-  return chunk;
-}
+  // Place a few simple buildings
+  const buildingCount = 3 + Math.floor(Math.abs(perlin2.noise3d(cx * 5, 0, cz * 5)) * 4);
+  for (let b = 0; b < buildingCount; b++) {
+    const bx = wx + Math.floor(perlin1.noise3d(cx * 7 + b, 0, cz * 7) * 12);
+    const bz = wz + Math.floor(perlin2.noise3d(cx * 7, 0, cz * 7 + b) * 12);
+    const by = getTerrainHeight(bx, bz);
+    if (by < 64 || by > 72) continue;
 
-// ============================================================
-// 生成 "BAOBAO" 文字墙
-// ============================================================
-let textWallGroup = null;
+    const width = 4 + Math.floor(Math.random() * 3);
+    const depth = 4 + Math.floor(Math.random() * 3);
+    const height = 4;
 
-function buildBAOBAOWall() {
-  const wallGroup = new THREE.Group();
-  const wallBlock = BLOCK.IRON_ORE; // 使用铁矿方块做文字
-
-  // 文字
-  const textWall = buildTextWall('BAOBAO', wallBlock);
-  textWall.position.set(8, 12, -2); // 在出生点前方
-  wallGroup.add(textWall);
-
-  // 背景墙
-  const wallMat = new THREE.MeshLambertMaterial({ color: BLOCK_COLORS[BLOCK.STONE].side });
-  const wallWidth = 18, wallHeight = 12;
-  const wallGeo = new THREE.BoxGeometry(wallWidth, wallHeight, 1);
-  const wallMesh = new THREE.Mesh(wallGeo, wallMat);
-  wallMesh.position.set(8, 12 + wallHeight / 2 - 1, -3);
-  wallMesh.castShadow = true;
-  wallMesh.receiveShadow = true;
-  wallGroup.add(wallMesh);
-
-  scene.add(wallGroup);
-  textWallGroup = wallGroup;
-}
-
-// ============================================================
-// 场景初始化
-// ============================================================
-function initScene() {
-  scene = new THREE.Scene();
-  scene.background = new THREE.Color(0x87ceeb);
-  scene.fog = new THREE.Fog(0x87ceeb, CONFIG.FOG_NEAR, CONFIG.FOG_FAR);
-
-  // 相机
-  camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 200);
-  camera.position.copy(player.position);
-
-  // 渲染器
-  renderer = new THREE.WebGLRenderer({ antialias: false, powerPreference: 'high-performance' });
-  renderer.setSize(window.innerWidth, window.innerHeight);
-  renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
-  renderer.shadowMap.enabled = true;
-  renderer.shadowMap.type = THREE.PCFSoftShadowMap;
-  document.body.appendChild(renderer.domElement);
-
-  // 光照
-  const ambientLight = new THREE.AmbientLight(0x8899aa, 0.6);
-  scene.add(ambientLight);
-
-  const dirLight = new THREE.DirectionalLight(0xffeedd, 1.0);
-  dirLight.position.set(50, 80, 30);
-  dirLight.castShadow = true;
-  dirLight.shadow.mapSize.set(2048, 2048);
-  dirLight.shadow.camera.near = 0.5;
-  dirLight.shadow.camera.far = 200;
-  dirLight.shadow.camera.left = -50;
-  dirLight.shadow.camera.right = 50;
-  dirLight.shadow.camera.top = 50;
-  dirLight.shadow.camera.bottom = -50;
-  scene.add(dirLight);
-
-  const hemiLight = new THREE.HemisphereLight(0x88ccff, 0x556633, 0.4);
-  scene.add(hemiLight);
-
-  clock = new THREE.Clock();
-}
-
-// ============================================================
-// 物理和碰撞检测
-// ============================================================
-function checkCollision(x, y, z) {
-  const halfW = CONFIG.PLAYER_WIDTH / 2;
-  // 检查玩家周围的方块
-  const checks = [
-    [x - halfW, y, z - halfW],
-    [x + halfW, y, z - halfW],
-    [x - halfW, y, z + halfW],
-    [x + halfW, y, z + halfW],
-    [x - halfW, y + CONFIG.PLAYER_HEIGHT, z - halfW],
-    [x + halfW, y + CONFIG.PLAYER_HEIGHT, z - halfW],
-    [x - halfW, y + CONFIG.PLAYER_HEIGHT, z + halfW],
-    [x + halfW, y + CONFIG.PLAYER_HEIGHT, z + halfW],
-    [x, y + CONFIG.PLAYER_HEIGHT * 0.5, z], // 中间
-    [x, y + 0.1, z], // 脚底
-  ];
-
-  for (const [cx, cy, cz] of checks) {
-    const bx = Math.floor(cx);
-    const by = Math.floor(cy);
-    const bz = Math.floor(cz);
-    const block = getBlock(bx, by, bz);
-    if (block !== BLOCK.AIR && block !== BLOCK.WATER) {
-      return { x: bx, y: by, z: bz, type: block };
+    // Walls
+    for (let dx = 0; dx < width; dx++) {
+      for (let dz = 0; dz < depth; dz++) {
+        if (dx === 0 || dx === width - 1 || dz === 0 || dz === depth - 1) {
+          // Wall
+          for (let dy = 1; dy <= height; dy++) {
+            if (dy === height || (dx === 0 || dx === width - 1 || dz === 0 || dz === depth - 1)) {
+              const isDoor = dy <= 2 && dx === Math.floor(width / 2) && dz === 0;
+              if (!isDoor) setBlockDirect(bx + dx, by + dy, bz + dz, B.OAK_PLANKS);
+            }
+          }
+        }
+        // Floor
+        setBlockDirect(bx + dx, by + 1, bz + dz, B.OAK_PLANKS);
+      }
+    }
+    // Roof
+    for (let dx = -1; dx <= width; dx++) {
+      for (let dz = -1; dz <= depth; dz++) {
+        setBlockDirect(bx + dx, by + height + 1, bz + dz, B.OAK_PLANKS);
+      }
     }
   }
-  return null;
 }
 
-function updatePhysics(dt) {
-  dt = Math.min(dt, 0.05); // 限制最大时间步
+// ============================================================
+// MESH GENERATION (Greedy-ish)
+// ============================================================
+const faceDirections = [
+  { dir: [0, 1, 0], corners: [[0,1,0],[1,1,0],[1,1,1],[0,1,1]], uvs: [[0,0],[1,0],[1,1],[0,1]] },
+  { dir: [0, -1, 0], corners: [[0,0,1],[1,0,1],[1,0,0],[0,0,0]], uvs: [[0,0],[1,0],[1,1],[0,1]] },
+  { dir: [1, 0, 0], corners: [[1,0,0],[1,1,0],[1,1,1],[1,0,1]], uvs: [[0,0],[0,1],[1,1],[1,0]] },
+  { dir: [-1, 0, 0], corners: [[0,0,1],[0,1,1],[0,1,0],[0,0,0]], uvs: [[0,0],[0,1],[1,1],[1,0]] },
+  { dir: [0, 0, 1], corners: [[0,0,1],[1,0,1],[1,1,1],[0,1,1]], uvs: [[0,0],[1,0],[1,1],[0,1]] },
+  { dir: [0, 0, -1], corners: [[1,0,0],[0,0,0],[0,1,0],[1,1,0]], uvs: [[0,0],[1,0],[1,1],[0,1]] }
+];
 
-  const forward = new THREE.Vector3(
-    -Math.sin(player.yaw), 0, -Math.cos(player.yaw)
-  );
-  const right = new THREE.Vector3(
-    Math.cos(player.yaw), 0, -Math.sin(player.yaw)
-  );
+function shouldRenderFace(blockId, neighborId) {
+  if (neighborId === B.AIR) return true;
+  if (BLOCK_TRANSPARENT[neighborId] && !BLOCK_TRANSPARENT[blockId]) return true;
+  if (blockId === B.WATER && neighborId !== B.WATER) return false;
+  if (blockId === B.OAK_LEAVES && neighborId === B.OAK_LEAVES) return false;
+  if (blockId === B.BIRCH_LEAVES && neighborId === B.BIRCH_LEAVES) return false;
+  if (BLOCK_TRANSPARENT[blockId] && blockId !== neighborId) return true;
+  return false;
+}
 
-  // 计算移动方向
-  const moveDir = new THREE.Vector3();
-  if (moveInput.fwd) moveDir.add(forward.clone().multiplyScalar(moveInput.fwd));
-  if (moveInput.right) moveDir.add(right.clone().multiplyScalar(moveInput.right));
-  if (moveDir.length() > 0) moveDir.normalize();
+function buildChunkMesh(cx, cz) {
+  const key = chunkKey(cx, cz);
+  const chunk = world[key];
+  if (!chunk) return;
 
-  const speed = CONFIG.MOVE_SPEED;
-  const targetVX = moveDir.x * speed;
-  const targetVZ = moveDir.z * speed;
+  const vertices = [];
+  const colors = [];
+  const indices = [];
+  const waterVertices = [];
+  const waterColors = [];
+  const waterIndices = [];
+  let vertCount = 0;
+  let waterVertCount = 0;
 
-  // 平滑水平移动
-  player.velocity.x = THREE.MathUtils.lerp(player.velocity.x, targetVX, 0.15);
-  player.velocity.z = THREE.MathUtils.lerp(player.velocity.z, targetVZ, 0.15);
+  const worldX = cx * CHUNK_SIZE;
+  const worldZ = cz * CHUNK_SIZE;
 
-  // 重力
-  player.velocity.y += CONFIG.GRAVITY * dt;
+  for (let ly = 0; ly < WORLD_HEIGHT; ly++) {
+    for (let lz = 0; lz < CHUNK_SIZE; lz++) {
+      for (let lx = 0; lx < CHUNK_SIZE; lx++) {
+        const blockId = chunk[blockIndex(lx, ly, lz)];
+        if (blockId === B.AIR) continue;
 
-  // 跳跃
-  if (jumpPressed && player.onGround) {
-    player.velocity.y = CONFIG.JUMP_SPEED;
-    player.onGround = false;
+        const wx = worldX + lx;
+        const wz = worldZ + lz;
+        const isWater = blockId === B.WATER;
+
+        for (const face of faceDirections) {
+          const nx = wx + face.dir[0];
+          const ny = ly + face.dir[1];
+          const nz = wz + face.dir[2];
+          const neighborId = getBlock(nx, ny, nz);
+
+          if (!shouldRenderFace(blockId, neighborId)) continue;
+
+          const color = new THREE.Color(BLOCK_COLORS[blockId]);
+          // Simple AO
+          let ao = 1.0;
+          if (face.dir[1] === 1) { // top face
+            const aoCheck = getBlock(wx - 1, ly + 1, wz) !== B.AIR ? 0.9 : 1.0;
+            ao = aoCheck;
+          } else if (face.dir[1] === -1) {
+            ao = 0.7; // bottom darker
+          }
+
+          const targetV = isWater ? waterVertices : vertices;
+          const targetC = isWater ? waterColors : colors;
+          const targetI = isWater ? waterIndices : indices;
+          const baseCount = isWater ? waterVertCount : vertCount;
+
+          for (let i = 0; i < 4; i++) {
+            const c = face.corners[i];
+            targetV.push(wx + c[0], ly + c[1], wz + c[2]);
+            targetC.push(color.r * ao, color.g * ao, color.b * ao);
+          }
+
+          targetI.push(baseCount, baseCount + 1, baseCount + 2);
+          targetI.push(baseCount, baseCount + 2, baseCount + 3);
+
+          if (isWater) waterVertCount += 4;
+          else vertCount += 4;
+        }
+      }
+    }
   }
 
-  // 移动 + 碰撞检测 (分轴)
-  const pos = player.position;
+  return { vertices, colors, indices, waterVertices, waterColors, waterIndices };
+}
 
-  // X 轴
-  const newX = pos.x + player.velocity.x * dt;
-  if (!checkCollision(newX, pos.y, pos.z)) {
-    pos.x = newX;
-  } else {
-    player.velocity.x = 0;
+function rebuildChunkMesh(cx, cz) {
+  const key = chunkKey(cx, cz);
+  // Remove old mesh
+  if (chunks[key]) {
+    scene.remove(chunks[key]);
+    chunks[key].geometry.dispose();
+    chunks[key].material.dispose();
+    chunks[key] = null;
+  }
+  if (waterChunks[key]) {
+    scene.remove(waterChunks[key]);
+    waterChunks[key].geometry.dispose();
+    waterChunks[key].material.dispose();
+    waterChunks[key] = null;
   }
 
-  // Z 轴
-  const newZ = pos.z + player.velocity.z * dt;
-  if (!checkCollision(pos.x, pos.y, newZ)) {
-    pos.z = newZ;
-  } else {
-    player.velocity.z = 0;
+  const meshData = buildChunkMesh(cx, cz);
+  if (!meshData) return;
+
+  // Solid mesh
+  if (meshData.vertices.length > 0) {
+    const geo = new THREE.BufferGeometry();
+    geo.setAttribute('position', new THREE.Float32BufferAttribute(meshData.vertices, 3));
+    geo.setAttribute('color', new THREE.Float32BufferAttribute(meshData.colors, 3));
+    geo.setIndex(meshData.indices);
+    geo.computeVertexNormals();
+
+    const mat = new THREE.MeshLambertMaterial({ vertexColors: true });
+    const mesh = new THREE.Mesh(geo, mat);
+    scene.add(mesh);
+    chunks[key] = mesh;
   }
 
-  // Y 轴
-  const newY = pos.y + player.velocity.y * dt;
-  if (!checkCollision(pos.x, newY, pos.z)) {
-    pos.y = newY;
-    player.onGround = false;
+  // Water mesh
+  if (meshData.waterVertices.length > 0) {
+    const geo = new THREE.BufferGeometry();
+    geo.setAttribute('position', new THREE.Float32BufferAttribute(meshData.waterVertices, 3));
+    geo.setAttribute('color', new THREE.Float32BufferAttribute(meshData.waterColors, 3));
+    geo.setIndex(meshData.waterIndices);
+
+    const mat = new THREE.MeshLambertMaterial({
+      vertexColors: true, transparent: true, opacity: 0.6,
+      side: THREE.DoubleSide
+    });
+    const mesh = new THREE.Mesh(geo, mat);
+    scene.add(mesh);
+    waterChunks[key] = mesh;
+  }
+}
+
+// ============================================================
+// CLOUDS
+// ============================================================
+function generateClouds() {
+  while (cloudGroup.children.length > 0) cloudGroup.remove(cloudGroup.children[0]);
+  for (let i = 0; i < 40; i++) {
+    const size = 8 + Math.random() * 20;
+    const cloudGeo = new THREE.BoxGeometry(size, 2, size * 0.6);
+    const cloudMat = new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.8 });
+    const cloud = new THREE.Mesh(cloudGeo, cloudMat);
+    cloud.position.set(
+      (Math.random() - 0.5) * CHUNK_SIZE * RENDER_DISTANCE * 3,
+      100 + Math.random() * 20,
+      (Math.random() - 0.5) * CHUNK_SIZE * RENDER_DISTANCE * 3
+    );
+    cloudGroup.add(cloud);
+  }
+}
+
+// ============================================================
+// MOB SYSTEM
+// ============================================================
+const MOB_TYPES = {
+  COW: { name: 'Cow', color: 0x8B4513, size: [0.9, 0.9, 1.2], health: 10, speed: 1.5, hostile: false, drops: [{id: B.OAK_PLANKS, count: 2}] },
+  PIG: { name: 'Pig', color: 0xFFB6C1, size: [0.8, 0.7, 1.0], health: 8, speed: 1.8, hostile: false, drops: [{id: B.OAK_PLANKS, count: 1}] },
+  SHEEP: { name: 'Sheep', color: 0xF5F5DC, size: [0.8, 0.8, 1.1], health: 8, speed: 1.5, hostile: false, drops: [{id: B.OAK_PLANKS, count: 1}] },
+  ZOMBIE: { name: 'Zombie', color: 0x006400, size: [0.6, 1.8, 0.3], health: 20, speed: 2.5, hostile: true, damage: 3, drops: [{id: B.IRON_ORE, count: 1}] }
+};
+
+class Mob {
+  constructor(type, x, y, z) {
+    this.type = type;
+    this.info = MOB_TYPES[type];
+    this.x = x; this.y = y; this.z = z;
+    this.vx = 0; this.vy = 0; this.vz = 0;
+    this.health = this.info.health;
+    this.maxHealth = this.info.health;
+    this.onGround = false;
+    this.wanderTimer = 0;
+    this.targetX = x; this.targetZ = z;
+    this.dead = false;
+    this.hurtTime = 0;
+    this.age = 0;
+
+    // Create mesh
+    const group = new THREE.Group();
+    const bodyGeo = new THREE.BoxGeometry(this.info.size[0], this.info.size[1], this.info.size[2]);
+    const bodyMat = new THREE.MeshLambertMaterial({ color: this.info.color });
+    const body = new THREE.Mesh(bodyGeo, bodyMat);
+    body.position.y = this.info.size[1] / 2;
+    group.add(body);
+
+    // Head
+    if (type === 'ZOMBIE') {
+      const headGeo = new THREE.BoxGeometry(0.5, 0.5, 0.5);
+      const headMat = new THREE.MeshLambertMaterial({ color: 0x2d5a1e });
+      const head = new THREE.Mesh(headGeo, headMat);
+      head.position.y = this.info.size[1] + 0.25;
+      group.add(head);
+    }
+
+    // Eyes for hostile mobs
+    if (this.info.hostile) {
+      const eyeGeo = new THREE.BoxGeometry(0.1, 0.08, 0.05);
+      const eyeMat = new THREE.MeshBasicMaterial({ color: 0xff0000 });
+      const eyeL = new THREE.Mesh(eyeGeo, eyeMat);
+      eyeL.position.set(-0.12, this.info.size[1] + 0.3, 0.26);
+      group.add(eyeL);
+      const eyeR = new THREE.Mesh(eyeGeo, eyeMat);
+      eyeR.position.set(0.12, this.info.size[1] + 0.3, 0.26);
+      group.add(eyeR);
+    }
+
+    group.position.set(x, y, z);
+    this.mesh = group;
+    scene.add(group);
+  }
+
+  update(dt) {
+    if (this.dead) return;
+    this.age += dt;
+    this.hurtTime = Math.max(0, this.hurtTime - dt);
+
+    // Gravity
+    this.vy += GRAVITY * dt;
+
+    // AI
+    this.wanderTimer -= dt;
+    if (this.wanderTimer <= 0) {
+      this.wanderTimer = 2 + Math.random() * 4;
+      if (this.info.hostile) {
+        const dx = player.x - this.x;
+        const dz = player.z - this.z;
+        const dist = Math.sqrt(dx * dx + dz * dz);
+        if (dist < 16) {
+          this.targetX = player.x;
+          this.targetZ = player.z;
+        } else {
+          this.targetX = this.x + (Math.random() - 0.5) * 10;
+          this.targetZ = this.z + (Math.random() - 0.5) * 10;
+        }
+      } else {
+        this.targetX = this.x + (Math.random() - 0.5) * 8;
+        this.targetZ = this.z + (Math.random() - 0.5) * 8;
+      }
+    }
+
+    // Move toward target
+    const dx = this.targetX - this.x;
+    const dz = this.targetZ - this.z;
+    const dist = Math.sqrt(dx * dx + dz * dz);
+    if (dist > 0.5) {
+      this.vx = (dx / dist) * this.info.speed;
+      this.vz = (dz / dist) * this.info.speed;
+    } else {
+      this.vx *= 0.8;
+      this.vz *= 0.8;
+    }
+
+    // Apply velocity
+    this.x += this.vx * dt;
+    this.z += this.vz * dt;
+    this.y += this.vy * dt;
+
+    // Collision
+    const blockBelow = getBlock(Math.floor(this.x), Math.floor(this.y - 0.1), Math.floor(this.z));
+    if (BLOCK_SOLID[blockBelow] && this.vy < 0) {
+      this.vy = 0;
+      this.onGround = true;
+      this.y = Math.floor(this.y) + 1;
+    } else {
+      this.onGround = false;
+    }
+
+    // Simple jump for hostile mobs
+    if (this.info.hostile && this.onGround && dist < 10) {
+      const blockAhead = getBlock(Math.floor(this.x + this.vx * 0.5), Math.floor(this.y), Math.floor(this.z + this.vz * 0.5));
+      if (BLOCK_SOLID[blockAhead]) {
+        this.vy = 8;
+      }
+    }
+
+    // Hostile mob attack
+    if (this.info.hostile) {
+      const pdx = player.x - this.x;
+      const pdz = player.z - this.z;
+      const pdist = Math.sqrt(pdx * pdx + pdz * pdz);
+      if (pdist < 2 && this.hurtTime <= 0) {
+        damagePlayer(this.info.damage);
+        this.hurtTime = 1.0;
+      }
+    }
+
+    // Fall damage
+    if (this.y < -10) {
+      this.dead = true;
+      scene.remove(this.mesh);
+      return;
+    }
+
+    // Update mesh position
+    this.mesh.position.set(this.x, this.y, this.z);
+    if (this.hurtTime > 0) {
+      this.mesh.children[0].material.color.setHex(0xff0000);
+    } else {
+      this.mesh.children[0].material.color.setHex(this.info.color);
+    }
+  }
+
+  takeDamage(amount) {
+    this.health -= amount;
+    this.hurtTime = 0.3;
+    if (this.health <= 0) {
+      this.dead = true;
+      // Drop items
+      if (this.info.drops) {
+        for (const drop of this.info.drops) {
+          addToInventory(drop.id, drop.count);
+        }
+      }
+      scene.remove(this.mesh);
+    }
+  }
+}
+
+function spawnMobs() {
+  // Remove dead mobs
+  mobs = mobs.filter(m => !m.dead);
+
+  const isNight = getDayProgress() > 0.5;
+
+  // Spawn passive mobs during day
+  if (mobs.length < 20) {
+    const types = ['COW', 'PIG', 'SHEEP'];
+    const type = types[Math.floor(Math.random() * types.length)];
+    const angle = Math.random() * Math.PI * 2;
+    const dist = 20 + Math.random() * 40;
+    const sx = player.x + Math.cos(angle) * dist;
+    const sz = player.z + Math.sin(angle) * dist;
+    const sy = getTerrainHeight(Math.floor(sx), Math.floor(sz)) + 1;
+    const biome = getBiome(Math.floor(sx), Math.floor(sz));
+    if (biome !== BIOME.DESERT && biome !== BIOME.OCEAN && sy > 62) {
+      mobs.push(new Mob(type, sx, sy, sz));
+    }
+  }
+
+  // Spawn zombies at night
+  if (isNight && mobs.filter(m => m.type === 'ZOMBIE').length < 8) {
+    const angle = Math.random() * Math.PI * 2;
+    const dist = 25 + Math.random() * 35;
+    const sx = player.x + Math.cos(angle) * dist;
+    const sz = player.z + Math.sin(angle) * dist;
+    const sy = getTerrainHeight(Math.floor(sx), Math.floor(sz)) + 1;
+    mobs.push(new Mob('ZOMBIE', sx, sy, sz));
+  }
+}
+
+// ============================================================
+// PLAYER PHYSICS & CONTROLS
+// ============================================================
+const keys = {};
+let mouseSensitivity = 0.002;
+let lastSpacePress = 0;
+let lastShiftPress = 0;
+let jumpCount = 0;
+
+document.addEventListener('keydown', e => {
+  keys[e.code] = true;
+  if (!gameStarted) return;
+
+  if (e.code === 'Escape') {
+    if (inventoryOpen) {
+      closeInventory();
+    } else {
+      togglePause();
+    }
+  }
+
+  if (e.code === 'KeyE' && !paused) {
+    if (inventoryOpen) closeInventory();
+    else openInventory();
+  }
+
+  if (e.code === 'KeyF' && !paused && !inventoryOpen) {
+    player.flyMode = !player.flyMode;
+    document.getElementById('fly-display').style.display = player.flyMode ? 'block' : 'none';
+    if (!player.flyMode) player.vy = -5;
+  }
+
+  if (e.code === 'Space' && !paused && !inventoryOpen) {
+    const now = Date.now();
+    if (now - lastSpacePress < 300) {
+      player.flyMode = true;
+      document.getElementById('fly-display').style.display = 'block';
+    }
+    lastSpacePress = now;
+  }
+
+  if (e.code === 'ShiftLeft' && !paused && !inventoryOpen) {
+    const now = Date.now();
+    if (now - lastShiftPress < 300) {
+      player.sprinting = true;
+    }
+    lastShiftPress = now;
+  }
+
+  // Hotbar keys
+  const num = parseInt(e.key);
+  if (num >= 1 && num <= 9 && !inventoryOpen) {
+    player.selectedSlot = num - 1;
+    updateHotbar();
+  }
+
+  if (e.code === 'KeyQ' && !paused && !inventoryOpen) {
+    dropItem();
+  }
+});
+
+document.addEventListener('keyup', e => {
+  keys[e.code] = false;
+  if (e.code === 'ShiftLeft') player.sprinting = false;
+});
+
+document.addEventListener('mousedown', e => {
+  if (!gameStarted || paused) return;
+  if (inventoryOpen) {
+    handleInventoryClick(e);
+    return;
+  }
+
+  if (e.button === 0) {
+    mouseDown.left = true;
+    breakProgress = 0;
+    tryBreakBlock();
+  }
+  if (e.button === 2) {
+    tryPlaceBlock();
+  }
+});
+
+document.addEventListener('mouseup', e => {
+  if (e.button === 0) {
+    mouseDown.left = false;
+    breakProgress = 0;
+    breakTarget = null;
+  }
+});
+
+document.addEventListener('mousemove', e => {
+  if (!gameStarted || paused || inventoryOpen) return;
+  if (document.pointerLockElement) {
+    player.yaw -= e.movementX * mouseSensitivity;
+    player.pitch -= e.movementY * mouseSensitivity;
+    player.pitch = Math.max(-Math.PI / 2 + 0.01, Math.min(Math.PI / 2 - 0.01, player.pitch));
+  }
+});
+
+document.addEventListener('contextmenu', e => e.preventDefault());
+
+// Scroll for hotbar
+document.addEventListener('wheel', e => {
+  if (!gameStarted || paused || inventoryOpen) return;
+  if (e.deltaY > 0) {
+    player.selectedSlot = (player.selectedSlot + 1) % 9;
   } else {
-    if (player.velocity.y < 0) {
+    player.selectedSlot = (player.selectedSlot + 8) % 9;
+  }
+  updateHotbar();
+});
+
+function updatePlayer(dt) {
+  if (paused) return;
+
+  // Movement
+  const speed = player.flyMode ? FLY_SPEED : (player.sprinting ? PLAYER_SPEED * SPRINT_MULT : PLAYER_SPEED);
+  const forward = new THREE.Vector3(-Math.sin(player.yaw), 0, -Math.cos(player.yaw));
+  const right = new THREE.Vector3(Math.cos(player.yaw), 0, -Math.sin(player.yaw));
+
+  let moveX = 0, moveZ = 0, moveY = 0;
+  if (keys['KeyW']) { moveX += forward.x; moveZ += forward.z; }
+  if (keys['KeyS']) { moveX -= forward.x; moveZ -= forward.z; }
+  if (keys['KeyA']) { moveX -= right.x; moveZ -= right.z; }
+  if (keys['KeyD']) { moveX += right.x; moveZ += right.z; }
+
+  const len = Math.sqrt(moveX * moveX + moveZ * moveZ);
+  if (len > 0) {
+    moveX /= len; moveZ /= len;
+  }
+
+  if (player.flyMode) {
+    player.vx = moveX * speed;
+    player.vz = moveZ * speed;
+    player.vy = 0;
+    if (keys['Space']) player.vy = speed;
+    if (keys['ShiftLeft']) player.vy = -speed;
+  } else {
+    player.vx = moveX * speed;
+    player.vz = moveZ * speed;
+    if (keys['Space'] && player.onGround) {
+      player.vy = JUMP_FORCE;
+      player.onGround = false;
+    }
+    player.vy += GRAVITY * dt;
+  }
+
+  // Water physics
+  const inWater = isPlayerInWater();
+  if (inWater && !player.flyMode) {
+    player.vy *= 0.9;
+    if (keys['Space']) player.vy = 4;
+    player.vx *= 0.8;
+    player.vz *= 0.8;
+  }
+  player.inWater = inWater;
+
+  // Collision detection - X axis
+  const newX = player.x + player.vx * dt;
+  if (!isSolidAt(newX, player.y, player.z) && !isSolidAt(newX, player.y - 1.5, player.z)) {
+    player.x = newX;
+  } else {
+    player.vx = 0;
+  }
+
+  // Z axis
+  const newZ = player.z + player.vz * dt;
+  if (!isSolidAt(player.x, player.y, newZ) && !isSolidAt(player.x, player.y - 1.5, newZ)) {
+    player.z = newZ;
+  } else {
+    player.vz = 0;
+  }
+
+  // Y axis
+  const newY = player.y + player.vy * dt;
+  if (player.vy < 0) {
+    // Falling - check below
+    if (!isSolidAt(player.x, newY - 1.6, player.z)) {
+      player.y = newY;
+      player.onGround = false;
+    } else {
+      // Landing
+      if (player.vy < -10 && !player.flyMode) {
+        const fallDist = player.fallStartY - player.y;
+        if (fallDist > 3) {
+          const damage = Math.floor((fallDist - 3) * 2);
+          damagePlayer(damage);
+        }
+      }
+      player.vy = 0;
       player.onGround = true;
-      // 吸附到地面
-      pos.y = Math.floor(pos.y) + 0.001;
+      player.y = Math.floor(player.y - 1.6) + 2.6;
+      player.fallStartY = player.y;
     }
-    player.velocity.y = 0;
+  } else if (player.vy > 0) {
+    if (!isSolidAt(player.x, newY + 0.2, player.z)) {
+      player.y = newY;
+    } else {
+      player.vy = 0;
+    }
   }
 
-  // 世界边界
-  pos.y = Math.max(1, Math.min(CONFIG.WORLD_HEIGHT - 3, pos.y));
+  if (player.onGround) player.fallStartY = player.y;
 
-  // 更新相机
-  camera.position.set(pos.x, pos.y + CONFIG.PLAYER_HEIGHT - 0.3, pos.z);
+  // Oxygen
+  if (inWater) {
+    player.breathTimer += dt;
+    if (player.breathTimer > 15) {
+      damagePlayer(1);
+    }
+  } else {
+    player.breathTimer = 0;
+  }
+
+  // Fall into void
+  if (player.y < -10) {
+    damagePlayer(20);
+  }
+
+  // Hunger depletion while sprinting
+  if (player.sprinting && (keys['KeyW'] || keys['KeyS'] || keys['KeyA'] || keys['KeyD'])) {
+    if (Math.random() < dt * 0.5) {
+      player.hunger = Math.max(0, player.hunger - 0.5);
+    }
+  }
+
+  // Health regen when hunger > 15
+  if (player.hunger > 15 && player.health < 20) {
+    if (Math.random() < dt * 0.1) {
+      player.health = Math.min(20, player.health + 1);
+    }
+  }
+
+  // Update camera
+  camera.position.set(player.x, player.y + 0.1, player.z);
   camera.rotation.order = 'YXZ';
   camera.rotation.y = player.yaw;
   camera.rotation.x = player.pitch;
+
+  // Update HUD
+  updateHUD();
+}
+
+function isSolidAt(x, y, z) {
+  const block = getBlock(Math.floor(x), Math.floor(y), Math.floor(z));
+  return BLOCK_SOLID[block];
+}
+
+function isPlayerInWater() {
+  const block = getBlock(Math.floor(player.x), Math.floor(player.y), Math.floor(player.z));
+  return block === B.WATER;
 }
 
 // ============================================================
-// 方块交互 (射线检测)
+// BLOCK INTERACTION
 // ============================================================
-const raycaster = new THREE.Raycaster();
-raycaster.far = CONFIG.REACH_DISTANCE;
+function getRaycast() {
+  const dir = new THREE.Vector3(0, 0, -1);
+  dir.applyEuler(camera.rotation);
 
-function getTargetBlock() {
-  raycaster.set(camera.position, camera.getWorldDirection(new THREE.Vector3()));
+  let x = player.x, y = player.y + 0.1, z = player.z;
+  let lastX = x, lastY = y, lastZ = z;
 
-  // 手动体素射线检测
-  const dir = camera.getWorldDirection(new THREE.Vector3());
-  const origin = camera.position.clone();
-  const step = 0.1;
-  let prevX, prevY, prevZ;
+  for (let i = 0; i < REACH_DISTANCE * 2; i++) {
+    x += dir.x * 0.5;
+    y += dir.y * 0.5;
+    z += dir.z * 0.5;
 
-  for (let t = 0; t < CONFIG.REACH_DISTANCE; t += step) {
-    const x = Math.floor(origin.x + dir.x * t);
-    const y = Math.floor(origin.y + dir.y * t);
-    const z = Math.floor(origin.z + dir.z * t);
+    const bx = Math.floor(x);
+    const by = Math.floor(y);
+    const bz = Math.floor(z);
 
-    const block = getBlock(x, y, z);
-    if (block !== BLOCK.AIR && block !== BLOCK.WATER) {
+    const block = getBlock(bx, by, bz);
+    if (block !== B.AIR && block !== B.WATER) {
       return {
-        x, y, z, type: block,
-        prevX: prevX ?? x, prevY: prevY ?? y, prevZ: prevZ ?? z,
+        x: bx, y: by, z: bz, block: block,
+        normal: { x: lastX - bx, y: lastY - by, z: lastZ - bz }
       };
     }
-    prevX = x; prevY = y; prevZ = z;
+
+    lastX = bx; lastY = by; lastZ = bz;
   }
   return null;
 }
 
-function breakBlock() {
-  const target = getTargetBlock();
-  if (target && target.type !== BLOCK.BEDROCK) {
-    setBlock(target.x, target.y, target.z, BLOCK.AIR);
+function tryBreakBlock() {
+  const hit = getRaycast();
+  if (!hit) return;
+
+  if (hit.block === B.BEDROCK) return;
+
+  const hardness = BLOCK_HARDNESS[hit.block] || 1;
+  if (breakTarget && (breakTarget.x !== hit.x || breakTarget.y !== hit.y || breakTarget.z !== hit.z)) {
+    breakProgress = 0;
+  }
+  breakTarget = hit;
+  breakProgress += 0.5 / hardness;
+
+  if (breakProgress >= 1) {
+    setBlock(hit.x, hit.y, hit.z, B.AIR);
+    addToInventory(hit.block, 1);
+    breakProgress = 0;
+    breakTarget = null;
   }
 }
 
-function placeBlock() {
-  const target = getTargetBlock();
-  if (target) {
-    const px = target.prevX;
-    const py = target.prevY;
-    const pz = target.prevZ;
+function tryPlaceBlock() {
+  const hit = getRaycast();
+  if (!hit) return;
 
-    // 不在玩家位置放置
-    const playerBX = Math.floor(player.position.x);
-    const playerBY = Math.floor(player.position.y);
-    const playerBZ = Math.floor(player.position.z);
-    if (px === playerBX && (py === playerBY || py === playerBY + 1) && pz === playerBZ) return;
+  const px = hit.x + hit.normal.x;
+  const py = hit.y + hit.normal.y;
+  const pz = hit.z + hit.normal.z;
 
-    const blockType = PLACEABLE_BLOCKS[selectedBlock];
-    if (blockType && getBlock(px, py, pz) === BLOCK.AIR) {
-      setBlock(px, py, pz, blockType);
+  // Don't place inside player
+  if (Math.floor(player.x) === px && (Math.floor(player.y) === py || Math.floor(player.y - 1) === py) && Math.floor(player.z) === pz) return;
+
+  const invItem = player.inventory[player.selectedSlot];
+  if (!invItem) return;
+
+  // Check if it's a special block
+  if (invItem.id === B.CRAFTING_TABLE || invItem.id === B.FURNACE || invItem.id === B.CHEST) {
+    setBlock(px, py, pz, invItem.id);
+    invItem.count--;
+    if (invItem.count <= 0) player.inventory[player.selectedSlot] = null;
+    updateHotbar();
+    return;
+  }
+
+  setBlock(px, py, pz, invItem.id);
+  invItem.count--;
+  if (invItem.count <= 0) player.inventory[player.selectedSlot] = null;
+  updateHotbar();
+}
+
+// ============================================================
+// INVENTORY SYSTEM
+// ============================================================
+function addToInventory(blockId, count) {
+  // Find existing stack
+  for (let i = 0; i < 36; i++) {
+    if (player.inventory[i] && player.inventory[i].id === blockId && player.inventory[i].count < 64) {
+      const canAdd = Math.min(count, 64 - player.inventory[i].count);
+      player.inventory[i].count += canAdd;
+      count -= canAdd;
+      if (count <= 0) { updateHotbar(); return true; }
     }
   }
+  // Find empty slot
+  for (let i = 0; i < 36; i++) {
+    if (!player.inventory[i]) {
+      const canAdd = Math.min(count, 64);
+      player.inventory[i] = { id: blockId, count: canAdd };
+      count -= canAdd;
+      if (count <= 0) { updateHotbar(); return true; }
+    }
+  }
+  updateHotbar();
+  return count <= 0;
+}
+
+function dropItem() {
+  const invItem = player.inventory[player.selectedSlot];
+  if (!invItem) return;
+  invItem.count--;
+  if (invItem.count <= 0) player.inventory[player.selectedSlot] = null;
+  updateHotbar();
 }
 
 // ============================================================
-// HUD 系统
+// CRAFTING SYSTEM
 // ============================================================
-function createBlockIcon(blockType) {
-  const canvas = document.createElement('canvas');
-  canvas.width = 32; canvas.height = 32;
-  const ctx = canvas.getContext('2d');
+const RECIPES = [
+  { name: 'Oak Planks x4', input: [{id: B.OAK_LOG, count: 1}], output: {id: B.OAK_PLANKS, count: 4} },
+  { name: 'Birch Planks x4', input: [{id: B.BIRCH_LOG, count: 1}], output: {id: B.BIRCH_PLANKS, count: 4} },
+  { name: 'Cobblestone x4', input: [{id: B.STONE, count: 1}], output: {id: B.COBBLESTONE, count: 4} },
+  { name: 'Crafting Table', input: [{id: B.OAK_PLANKS, count: 4}], output: {id: B.CRAFTING_TABLE, count: 1}, shapeless: true },
+  { name: 'Furnace', input: [{id: B.COBBLESTONE, count: 8}], output: {id: B.FURNACE, count: 1}, shapeless: true },
+  { name: 'Glass x4', input: [{id: B.SAND, count: 4}], output: {id: B.GLASS, count: 4}, shapeless: true },
+  { name: 'Torch x4', input: [{id: B.COAL_ORE, count: 1}, {id: B.OAK_PLANKS, count: 1}], output: {id: B.TORCH, count: 4}, shapeless: true },
+  { name: 'Bricks x4', input: [{id: B.CLAY, count: 4}], output: {id: B.BRICKS, count: 4}, shapeless: true },
+  { name: 'Snow Block', input: [{id: B.SNOW, count: 4}], output: {id: B.SNOW, count: 1}, shapeless: true },
+];
 
-  // 绘制简易3D方块图标
-  const bc = BLOCK_COLORS[blockType];
-  const top = '#' + bc.top.toString(16).padStart(6, '0');
-  const side = '#' + bc.side.toString(16).padStart(6, '0');
+function checkCraftingGrid() {
+  // Get items in crafting grid
+  const gridItems = craftingGrid.map(slot => slot ? { id: slot.id, count: slot.count } : null);
 
-  // 顶面
-  ctx.fillStyle = top;
-  ctx.beginPath();
-  ctx.moveTo(16, 4); ctx.lineTo(28, 10); ctx.lineTo(16, 16); ctx.lineTo(4, 10);
-  ctx.fill();
-
-  // 左面
-  ctx.fillStyle = side;
-  ctx.beginPath();
-  ctx.moveTo(4, 10); ctx.lineTo(16, 16); ctx.lineTo(16, 28); ctx.lineTo(4, 22);
-  ctx.fill();
-
-  // 右面
-  ctx.fillStyle = side;
-  ctx.globalAlpha = 0.8;
-  ctx.beginPath();
-  ctx.moveTo(16, 16); ctx.lineTo(28, 10); ctx.lineTo(28, 22); ctx.lineTo(16, 28);
-  ctx.fill();
-  ctx.globalAlpha = 1;
-
-  return canvas;
+  // Try each recipe
+  for (const recipe of RECIPES) {
+    if (recipe.shapeless) {
+      // Shapeless - just check if we have the right items total
+      let totalNeeded = {};
+      for (const inp of recipe.input) {
+        totalNeeded[inp.id] = (totalNeeded[inp.id] || 0) + inp.count;
+      }
+      let totalHave = {};
+      for (const item of gridItems) {
+        if (item) totalHave[item.id] = (totalHave[item.id] || 0) + item.count;
+      }
+      let match = true;
+      for (const [id, needed] of Object.entries(totalNeeded)) {
+        if ((totalHave[id] || 0) < needed) { match = false; break; }
+      }
+      if (match && Object.keys(totalHave).length > 0) {
+        return recipe;
+      }
+    } else {
+      // Shaped - check exact pattern
+      // For simplicity, treat all as shapeless for now
+      let totalNeeded = {};
+      for (const inp of recipe.input) {
+        totalNeeded[inp.id] = (totalNeeded[inp.id] || 0) + inp.count;
+      }
+      let totalHave = {};
+      for (const item of gridItems) {
+        if (item) totalHave[item.id] = (totalHave[item.id] || 0) + item.count;
+      }
+      let match = true;
+      for (const [id, needed] of Object.entries(totalNeeded)) {
+        if ((totalHave[id] || 0) < needed) { match = false; break; }
+      }
+      if (match && Object.keys(totalHave).length > 0) {
+        return recipe;
+      }
+    }
+  }
+  return null;
 }
 
-function initHUD() {
-  const hud = document.getElementById('hud');
-  hud.innerHTML = '';
+function doCraft() {
+  const recipe = checkCraftingGrid();
+  if (!recipe) return;
 
-  PLACEABLE_BLOCKS.forEach((blockType, i) => {
-    const slot = document.createElement('div');
-    slot.className = 'hotbar-slot' + (i === selectedBlock ? ' active' : '');
-    slot.style.position = 'relative';
+  // Consume inputs
+  for (const inp of recipe.input) {
+    let remaining = inp.count;
+    for (let i = 0; i < 9 && remaining > 0; i++) {
+      if (craftingGrid[i] && craftingGrid[i].id === inp.id) {
+        const take = Math.min(remaining, craftingGrid[i].count);
+        craftingGrid[i].count -= take;
+        remaining -= take;
+        if (craftingGrid[i].count <= 0) craftingGrid[i] = null;
+      }
+    }
+  }
 
-    const key = document.createElement('span');
-    key.className = 'hotbar-key';
-    key.textContent = i + 1;
-    slot.appendChild(key);
-
-    const icon = createBlockIcon(blockType);
-    slot.appendChild(icon);
-
-    slot.title = BLOCK_NAMES[blockType];
-    slot.onclick = () => {
-      selectedBlock = i;
-      document.querySelectorAll('.hotbar-slot').forEach((s, j) => {
-        s.className = 'hotbar-slot' + (j === i ? ' active' : '');
-      });
-    };
-    hud.appendChild(slot);
-  });
-}
-
-function updateCoords() {
-  const coords = document.getElementById('coords');
-  const p = player.position;
-  const cx = getChunkCoord(Math.floor(p.x));
-  const cz = getChunkCoord(Math.floor(p.z));
-  coords.textContent = `位置: ${Math.floor(p.x)}, ${Math.floor(p.y)}, ${Math.floor(p.z)} | 区块: ${cx}, ${cz} | 方块: ${BLOCK_NAMES[PLACEABLE_BLOCKS[selectedBlock]]}`;
+  // Add output to inventory
+  addToInventory(recipe.output.id, recipe.output.count);
+  updateInventoryUI();
 }
 
 // ============================================================
-// 输入处理
+// UI MANAGEMENT
 // ============================================================
-function initControls() {
-  const overlay = document.getElementById('overlay');
-  const isMobile = /Android|iPhone|iPad|iPod|webOS/i.test(navigator.userAgent);
+function updateHUD() {
+  // Health hearts
+  const healthBar = document.getElementById('health-bar');
+  let heartsHtml = '';
+  for (let i = 0; i < 10; i++) {
+    const filled = player.health >= (i + 1) * 2;
+    const half = player.health === i * 2 + 1;
+    heartsHtml += `<span class="heart ${filled ? '' : 'empty'}">${filled ? '❤' : (half ? '💔' : '♡')}</span>`;
+  }
+  healthBar.innerHTML = heartsHtml;
 
-  if (isMobile) {
-    initMobileControls();
+  // Hunger
+  const hungerBar = document.getElementById('hunger-bar');
+  let hungerHtml = '';
+  for (let i = 0; i < 10; i++) {
+    const filled = player.hunger >= (i + 1) * 2;
+    hungerHtml += `<span class="hunger ${filled ? '' : 'empty'}">🍖</span>`;
+  }
+  hungerBar.innerHTML = hungerHtml;
+
+  // Coordinates
+  document.getElementById('coords').textContent =
+    `X: ${Math.floor(player.x)} Y: ${Math.floor(player.y)} Z: ${Math.floor(player.z)}`;
+
+  // Time
+  const progress = getDayProgress();
+  const hours = Math.floor(progress * 24);
+  const minutes = Math.floor((progress * 24 - hours) * 60);
+  document.getElementById('time-display').textContent =
+    `Day ${dayCount} - ${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}`;
+
+  // Biome
+  const biome = getBiome(Math.floor(player.x), Math.floor(player.z));
+  const biomeNames = ['Plains', 'Forest', 'Desert', 'Mountains', 'Snow', 'Ocean'];
+  document.getElementById('biome-display').textContent = `Biome: ${biomeNames[biome]}`;
+
+  // Block info
+  const hit = getRaycast();
+  const blockInfo = document.getElementById('block-info');
+  if (hit) {
+    blockInfo.textContent = BLOCK_NAMES[hit.block] || 'Unknown';
   } else {
-    initDesktopControls();
+    blockInfo.textContent = '';
   }
 
-  // 数字键切换方块
-  document.addEventListener('keydown', (e) => {
-    const num = parseInt(e.key);
-    if (num >= 1 && num <= PLACEABLE_BLOCKS.length) {
-      selectedBlock = num - 1;
-      document.querySelectorAll('.hotbar-slot').forEach((s, j) => {
-        s.className = 'hotbar-slot' + (j === selectedBlock ? ' active' : '');
-      });
-    }
-  });
+  // Highlight
+  if (hit) {
+    highlightMesh.visible = true;
+    highlightMesh.position.set(hit.x + 0.5, hit.y + 0.5, hit.z + 0.5);
+  } else {
+    highlightMesh.visible = false;
+  }
 }
 
-function initDesktopControls() {
-  const overlay = document.getElementById('overlay');
+function updateHotbar() {
+  const hotbar = document.getElementById('hotbar');
+  let html = '';
+  for (let i = 0; i < 9; i++) {
+    const item = player.inventory[i];
+    const selected = i === player.selectedSlot ? 'selected' : '';
+    let content = '';
+    if (item) {
+      content = `<div style="width:32px;height:32px;background:${BLOCK_COLORS[item.id]};border-radius:2px;"></div>`;
+      if (item.count > 1) content += `<span class="count">${item.count}</span>`;
+    }
+    html += `<div class="hotbar-slot ${selected}">${content}</div>`;
+  }
+  hotbar.innerHTML = html;
+}
 
-  overlay.addEventListener('click', () => {
+function openInventory() {
+  inventoryOpen = true;
+  document.getElementById('inventory-screen').classList.add('open');
+  document.exitPointerLock();
+  updateInventoryUI();
+}
+
+function closeInventory() {
+  inventoryOpen = false;
+  document.getElementById('inventory-screen').classList.remove('open');
+  // Return crafting grid items to inventory
+  for (let i = 0; i < 9; i++) {
+    if (craftingGrid[i]) {
+      addToInventory(craftingGrid[i].id, craftingGrid[i].count);
+      craftingGrid[i] = null;
+    }
+  }
+  heldItem = null;
+  renderer.domElement.requestPointerLock();
+}
+
+function updateInventoryUI() {
+  const mainDiv = document.getElementById('inv-main');
+  let html = '';
+
+  // Hotbar row
+  html += '<div class="inv-row">';
+  for (let i = 0; i < 9; i++) {
+    const item = player.inventory[i];
+    let content = '';
+    if (item) {
+      content = `<div style="width:28px;height:28px;background:${BLOCK_COLORS[item.id]};border-radius:2px;"></div>`;
+      if (item.count > 1) content += `<span class="count">${item.count}</span>`;
+    }
+    html += `<div class="inv-slot" data-slot="${i}">${content}</div>`;
+  }
+  html += '</div>';
+
+  // Main inventory
+  for (let row = 0; row < 3; row++) {
+    html += '<div class="inv-row">';
+    for (let col = 0; col < 9; col++) {
+      const i = 9 + row * 9 + col;
+      const item = player.inventory[i];
+      let content = '';
+      if (item) {
+        content = `<div style="width:28px;height:28px;background:${BLOCK_COLORS[item.id]};border-radius:2px;"></div>`;
+        if (item.count > 1) content += `<span class="count">${item.count}</span>`;
+      }
+      html += `<div class="inv-slot" data-slot="${i}">${content}</div>`;
+    }
+    html += '</div>';
+  }
+  mainDiv.innerHTML = html;
+
+  // Update crafting grid UI
+  updateCraftingGridUI();
+
+  // Update recipe list
+  updateRecipeList();
+}
+
+function updateCraftingGridUI() {
+  const slots = document.querySelectorAll('.crafting-slot');
+  slots.forEach((slot, i) => {
+    const item = craftingGrid[i];
+    let content = '';
+    if (item) {
+      content = `<div style="width:26px;height:26px;background:${BLOCK_COLORS[item.id]};border-radius:2px;"></div>`;
+      if (item.count > 1) content += `<span class="count" style="font-size:9px;">${item.count}</span>`;
+    }
+    slot.innerHTML = content;
+  });
+
+  // Check for crafting output
+  const recipe = checkCraftingGrid();
+  const outputSlot = document.getElementById('crafting-output');
+  if (recipe) {
+    outputSlot.innerHTML = `<div style="width:32px;height:32px;background:${BLOCK_COLORS[recipe.output.id]};border-radius:2px;"></div>
+      <span class="count" style="font-size:10px;">${recipe.output.count}</span>`;
+    outputSlot.onclick = doCraft;
+  } else {
+    outputSlot.innerHTML = '';
+    outputSlot.onclick = null;
+  }
+}
+
+function updateRecipeList() {
+  const list = document.getElementById('recipe-list');
+  let html = '<div style="font-size:11px;color:#555;margin-bottom:4px;">Available Recipes:</div>';
+  for (const recipe of RECIPES) {
+    const canCraft = checkRecipeAvailability(recipe);
+    html += `<div class="recipe-item ${canCraft ? 'can-craft' : ''}" onclick="autoCraft('${recipe.name}')">${recipe.name}</div>`;
+  }
+  list.innerHTML = html;
+}
+
+function checkRecipeAvailability(recipe) {
+  let totalNeeded = {};
+  for (const inp of recipe.input) {
+    totalNeeded[inp.id] = (totalNeeded[inp.id] || 0) + inp.count;
+  }
+  let totalHave = {};
+  for (const item of player.inventory) {
+    if (item) totalHave[item.id] = (totalHave[item.id] || 0) + item.count;
+  }
+  for (const [id, needed] of Object.entries(totalNeeded)) {
+    if ((totalHave[id] || 0) < needed) return false;
+  }
+  return true;
+}
+
+function autoCraft(recipeName) {
+  const recipe = RECIPES.find(r => r.name === recipeName);
+  if (!recipe || !checkRecipeAvailability(recipe)) return;
+
+  // Consume from inventory
+  for (const inp of recipe.input) {
+    let remaining = inp.count;
+    for (let i = 0; i < 36 && remaining > 0; i++) {
+      if (player.inventory[i] && player.inventory[i].id === inp.id) {
+        const take = Math.min(remaining, player.inventory[i].count);
+        player.inventory[i].count -= take;
+        remaining -= take;
+        if (player.inventory[i].count <= 0) player.inventory[i] = null;
+      }
+    }
+  }
+
+  addToInventory(recipe.output.id, recipe.output.count);
+  updateInventoryUI();
+}
+
+function handleInventoryClick(e) {
+  const slot = e.target.closest('.inv-slot, .crafting-slot');
+  if (!slot) return;
+
+  if (slot.classList.contains('inv-slot')) {
+    const slotIndex = parseInt(slot.dataset.slot);
+    if (heldItem) {
+      // Place held item
+      if (player.inventory[slotIndex]) {
+        // Swap
+        const temp = player.inventory[slotIndex];
+        player.inventory[slotIndex] = heldItem;
+        heldItem = temp;
+      } else {
+        player.inventory[slotIndex] = heldItem;
+        heldItem = null;
+      }
+    } else {
+      // Pick up item
+      if (player.inventory[slotIndex]) {
+        heldItem = player.inventory[slotIndex];
+        player.inventory[slotIndex] = null;
+      }
+    }
+    updateInventoryUI();
+  } else if (slot.classList.contains('crafting-slot')) {
+    const cx = parseInt(slot.dataset.cx);
+    const cy = parseInt(slot.dataset.cy);
+    const index = cy * 3 + cx;
+
+    if (heldItem) {
+      if (craftingGrid[index]) {
+        const temp = craftingGrid[index];
+        craftingGrid[index] = heldItem;
+        heldItem = temp;
+      } else {
+        craftingGrid[index] = heldItem;
+        heldItem = null;
+      }
+    } else {
+      if (craftingGrid[index]) {
+        heldItem = craftingGrid[index];
+        craftingGrid[index] = null;
+      }
+    }
+    updateCraftingGridUI();
+  }
+}
+
+// ============================================================
+// DAY/NIGHT CYCLE
+// ============================================================
+function getDayProgress() {
+  return (gameTime % DAY_LENGTH) / DAY_LENGTH;
+}
+
+function updateDayNight(dt) {
+  gameTime += dt;
+  if (gameTime >= DAY_LENGTH) {
+    gameTime -= DAY_LENGTH;
+    dayCount++;
+  }
+
+  const progress = getDayProgress();
+  const sunAngle = progress * Math.PI * 2;
+
+  // Sun position
+  sun.position.set(
+    Math.cos(sunAngle) * 300,
+    Math.sin(sunAngle) * 300,
+    100
+  );
+  moon.position.set(
+    Math.cos(sunAngle + Math.PI) * 300,
+    Math.sin(sunAngle + Math.PI) * 300,
+    100
+  );
+
+  // Sky color
+  const dayBrightness = Math.max(0, Math.sin(sunAngle));
+  let skyR, skyG, skyB;
+
+  if (dayBrightness > 0.3) {
+    // Day
+    skyR = 0.53; skyG = 0.81; skyB = 0.92;
+  } else if (dayBrightness > 0) {
+    // Sunrise/sunset
+    const t = dayBrightness / 0.3;
+    skyR = 0.53 * t + 0.8 * (1 - t);
+    skyG = 0.81 * t + 0.4 * (1 - t);
+    skyB = 0.92 * t + 0.3 * (1 - t);
+  } else {
+    // Night
+    const t = Math.min(1, -dayBrightness * 2);
+    skyR = 0.8 * (1 - t) + 0.05 * t;
+    skyG = 0.4 * (1 - t) + 0.05 * t;
+    skyB = 0.3 * (1 - t) + 0.15 * t;
+  }
+
+  scene.fog.color.setRGB(skyR, skyG, skyB);
+  renderer.setClearColor(new THREE.Color(skyR, skyG, skyB));
+  skyMat.color.setRGB(skyR, skyG, skyB);
+  skyDome.material.color.setRGB(skyR, skyG, skyB);
+
+  // Lighting
+  const lightIntensity = Math.max(0.15, dayBrightness);
+  ambientLight.intensity = 0.3 + lightIntensity * 0.5;
+  dirLight.intensity = lightIntensity * 0.8;
+
+  // Sun glow
+  sunMat.color.setHex(dayBrightness > 0 ? 0xffff00 : 0xaaaaaa);
+  sun.visible = dayBrightness > -0.1;
+  moon.visible = dayBrightness < 0.2;
+
+  // Fog distance
+  const fogDist = CHUNK_SIZE * RENDER_DISTANCE;
+  scene.fog.far = fogDist;
+}
+
+// ============================================================
+// MINIMAP
+// ============================================================
+function updateMinimap() {
+  const canvas = document.getElementById('minimap-canvas');
+  const ctx = canvas.getContext('2d');
+  const size = 120;
+  const scale = 2; // 2 blocks per pixel
+
+  ctx.fillStyle = '#000';
+  ctx.fillRect(0, 0, size, size);
+
+  const playerX = Math.floor(player.x);
+  const playerZ = Math.floor(player.z);
+
+  for (let px = 0; px < size; px++) {
+    for (let pz = 0; pz < size; pz++) {
+      const wx = playerX + (px - size / 2) * scale;
+      const wz = playerZ + (pz - size / 2) * scale;
+      const height = getTerrainHeight(wx, wz);
+      const biome = getBiome(wx, wz);
+
+      let color;
+      switch (biome) {
+        case BIOME.PLAINS: color = '#5a8f29'; break;
+        case BIOME.FOREST: color = '#2d7a1e'; break;
+        case BIOME.DESERT: color = '#e8d68a'; break;
+        case BIOME.MOUNTAINS: color = '#808080'; break;
+        case BIOME.SNOW: color = '#f0f0f0'; break;
+        case BIOME.OCEAN: color = '#3366cc'; break;
+        default: color = '#555';
+      }
+
+      if (height < 60) color = '#3366cc';
+
+      ctx.fillStyle = color;
+      ctx.fillRect(px, pz, 1, 1);
+    }
+  }
+
+  // Player dot
+  ctx.fillStyle = '#ff0';
+  ctx.fillRect(size / 2 - 2, size / 2 - 2, 4, 4);
+
+  // Direction indicator
+  const dirX = Math.sin(player.yaw) * 6;
+  const dirZ = Math.cos(player.yaw) * 6;
+  ctx.strokeStyle = '#ff0';
+  ctx.lineWidth = 2;
+  ctx.beginPath();
+  ctx.moveTo(size / 2, size / 2);
+  ctx.lineTo(size / 2 + dirX, size / 2 + dirZ);
+  ctx.stroke();
+}
+
+// ============================================================
+// SAVE / LOAD
+// ============================================================
+function saveGame() {
+  const saveData = {
+    player: {
+      x: player.x, y: player.y, z: player.z,
+      health: player.health, hunger: player.hunger,
+      inventory: player.inventory,
+      selectedSlot: player.selectedSlot,
+      flyMode: player.flyMode
+    },
+    gameTime, dayCount,
+    modifiedBlocks
+  };
+  localStorage.setItem('minicraft_save', JSON.stringify(saveData));
+  togglePause();
+}
+
+function loadGame() {
+  const data = localStorage.getItem('minicraft_save');
+  if (!data) return false;
+  try {
+    const save = JSON.parse(data);
+    player.x = save.player.x;
+    player.y = save.player.y;
+    player.z = save.player.z;
+    player.health = save.player.health;
+    player.hunger = save.player.hunger;
+    player.inventory = save.player.inventory;
+    player.selectedSlot = save.player.selectedSlot;
+    player.flyMode = save.player.flyMode;
+    gameTime = save.gameTime;
+    dayCount = save.dayCount;
+    modifiedBlocks = save.modifiedBlocks || {};
+    return true;
+  } catch (e) {
+    return false;
+  }
+}
+
+// ============================================================
+// PAUSE MENU
+// ============================================================
+function togglePause() {
+  paused = !paused;
+  document.getElementById('pause-menu').classList.toggle('open', paused);
+  if (paused) {
+    document.exitPointerLock();
+  } else {
     renderer.domElement.requestPointerLock();
-  });
-
-  document.addEventListener('pointerlockchange', () => {
-    isLocked = !!document.pointerLockElement;
-    overlay.style.display = isLocked ? 'none' : 'flex';
-    document.getElementById('crosshair').style.display = isLocked ? 'block' : 'none';
-    document.getElementById('hud').style.display = isLocked ? 'flex' : 'none';
-    document.getElementById('coords').style.display = isLocked ? 'block' : 'none';
-  });
-
-  document.addEventListener('mousemove', (e) => {
-    if (!isLocked) return;
-    player.yaw -= e.movementX * 0.002;
-    player.pitch -= e.movementY * 0.002;
-    player.pitch = Math.max(-Math.PI / 2 + 0.01, Math.min(Math.PI / 2 - 0.01, player.pitch));
-  });
-
-  // WASD
-  const keys = {};
-  document.addEventListener('keydown', (e) => {
-    keys[e.code] = true;
-    updateMovement();
-    if (e.code === 'Space') jumpPressed = true;
-  });
-  document.addEventListener('keyup', (e) => {
-    keys[e.code] = false;
-    updateMovement();
-    if (e.code === 'Space') jumpPressed = false;
-  });
-
-  function updateMovement() {
-    moveInput.fwd = 0;
-    moveInput.right = 0;
-    if (keys['KeyW'] || keys['ArrowUp']) moveInput.fwd = 1;
-    if (keys['KeyS'] || keys['ArrowDown']) moveInput.fwd = -1;
-    if (keys['KeyA'] || keys['ArrowLeft']) moveInput.right = -1;
-    if (keys['KeyD'] || keys['ArrowRight']) moveInput.right = 1;
   }
-
-  // 鼠标点击
-  document.addEventListener('mousedown', (e) => {
-    if (!isLocked) return;
-    if (e.button === 0) placeBlock();  // 左键放置
-    if (e.button === 2) breakBlock();   // 右键破坏
-  });
-
-  // 禁用右键菜单
-  document.addEventListener('contextmenu', (e) => e.preventDefault());
 }
 
-function initMobileControls() {
-  const overlay = document.getElementById('overlay');
-
-  overlay.addEventListener('click', () => {
-    overlay.style.display = 'none';
-    document.getElementById('crosshair').style.display = 'block';
-    document.getElementById('hud').style.display = 'flex';
-    document.getElementById('coords').style.display = 'block';
-    isLocked = true;
-  });
-
-  // 左摇杆: 移动
-  const joystickLeft = document.getElementById('joystick-left');
-  const thumbLeft = document.getElementById('thumb-left');
-  let leftTouch = null;
-
-  joystickLeft.addEventListener('touchstart', (e) => {
-    e.preventDefault();
-    leftTouch = e.touches[0].identifier;
-  });
-
-  document.addEventListener('touchmove', (e) => {
-    for (const touch of e.changedTouches) {
-      if (touch.identifier === leftTouch) {
-        const rect = joystickLeft.getBoundingClientRect();
-        const cx = rect.left + rect.width / 2;
-        const cy = rect.top + rect.height / 2;
-        let dx = (touch.clientX - cx) / (rect.width / 2);
-        let dy = (touch.clientY - cy) / (rect.height / 2);
-        const dist = Math.sqrt(dx * dx + dy * dy);
-        if (dist > 1) { dx /= dist; dy /= dist; }
-        thumbLeft.style.transform = `translate(calc(-50% + ${dx * 30}px), calc(-50% + ${dy * 30}px))`;
-        moveInput.fwd = -dy;
-        moveInput.right = dx;
-      }
-    }
-  });
-
-  document.addEventListener('touchend', (e) => {
-    for (const touch of e.changedTouches) {
-      if (touch.identifier === leftTouch) {
-        leftTouch = null;
-        thumbLeft.style.transform = 'translate(-50%,-50%)';
-        moveInput.fwd = 0;
-        moveInput.right = 0;
-      }
-    }
-  });
-
-  // 右摇杆: 视角
-  const joystickRight = document.getElementById('joystick-right');
-  const thumbRight = document.getElementById('thumb-right');
-  let rightTouch = null;
-  let lastTouchX = 0, lastTouchY = 0;
-
-  joystickRight.addEventListener('touchstart', (e) => {
-    e.preventDefault();
-    rightTouch = e.touches[0].identifier;
-    lastTouchX = e.touches[0].clientX;
-    lastTouchY = e.touches[0].clientY;
-  });
-
-  document.addEventListener('touchmove', (e) => {
-    for (const touch of e.changedTouches) {
-      if (touch.identifier === rightTouch) {
-        const dx = touch.clientX - lastTouchX;
-        const dy = touch.clientY - lastTouchY;
-        player.yaw -= dx * 0.004;
-        player.pitch -= dy * 0.004;
-        player.pitch = Math.max(-Math.PI / 2 + 0.01, Math.min(Math.PI / 2 - 0.01, player.pitch));
-        lastTouchX = touch.clientX;
-        lastTouchY = touch.clientY;
-
-        const rect = joystickRight.getBoundingClientRect();
-        const cx = rect.left + rect.width / 2;
-        const cy = rect.top + rect.height / 2;
-        let rdx = (touch.clientX - cx) / (rect.width / 2);
-        let rdy = (touch.clientY - cy) / (rect.height / 2);
-        const dist = Math.sqrt(rdx * rdx + rdy * rdy);
-        if (dist > 1) { rdx /= dist; rdy /= dist; }
-        thumbRight.style.transform = `translate(calc(-50% + ${rdx * 30}px), calc(-50% + ${rdy * 30}px))`;
-      }
-    }
-  });
-
-  document.addEventListener('touchend', (e) => {
-    for (const touch of e.changedTouches) {
-      if (touch.identifier === rightTouch) {
-        rightTouch = null;
-        thumbRight.style.transform = 'translate(-50%,-50%)';
-      }
-    }
-  });
-
-  // 跳跃按钮
-  document.getElementById('btn-jump').addEventListener('touchstart', (e) => {
-    e.preventDefault();
-    jumpPressed = true;
-  });
-  document.getElementById('btn-jump').addEventListener('touchend', () => {
-    jumpPressed = false;
-  });
-
-  // 破坏和放置按钮
-  document.getElementById('btn-break').addEventListener('touchstart', (e) => {
-    e.preventDefault();
-    breakBlock();
-  });
-  document.getElementById('btn-place').addEventListener('touchstart', (e) => {
-    e.preventDefault();
-    placeBlock();
-  });
+function resumeGame() {
+  paused = false;
+  document.getElementById('pause-menu').classList.remove('open');
+  renderer.domElement.requestPointerLock();
 }
 
 // ============================================================
-// 区块管理 (渲染距离优化)
+// DAMAGE SYSTEM
 // ============================================================
+function damagePlayer(amount) {
+  if (Date.now() - player.lastDamageTime < 500) return; // Invincibility frames
+  player.health -= amount;
+  player.lastDamageTime = Date.now();
+
+  // Flash red
+  const overlay = document.getElementById('damage-overlay');
+  overlay.style.background = 'rgba(255,0,0,0.4)';
+  setTimeout(() => { overlay.style.background = 'rgba(255,0,0,0)'; }, 200);
+
+  if (player.health <= 0) {
+    player.health = 0;
+    document.getElementById('death-screen').classList.add('open');
+    document.exitPointerLock();
+  }
+}
+
+function respawnPlayer() {
+  player.health = 20;
+  player.hunger = 20;
+  player.y = getTerrainHeight(8, 8) + 3;
+  player.x = 8;
+  player.z = 8;
+  player.vy = 0;
+  document.getElementById('death-screen').classList.remove('open');
+  renderer.domElement.requestPointerLock();
+}
+
+// ============================================================
+// FPS COUNTER
+// ============================================================
+let frameCount = 0;
+let lastFpsTime = 0;
+let currentFps = 0;
+
+function updateFPS() {
+  frameCount++;
+  const now = performance.now();
+  if (now - lastFpsTime >= 1000) {
+    currentFps = frameCount;
+    frameCount = 0;
+    lastFpsTime = now;
+    document.getElementById('fps-display').textContent = `FPS: ${currentFps}`;
+  }
+}
+
+// ============================================================
+// CHUNK MANAGEMENT
+// ============================================================
+let lastChunkX = -999, lastChunkZ = -999;
+let mobSpawnTimer = 0;
+
 function updateChunks() {
-  const pcx = getChunkCoord(Math.floor(player.position.x));
-  const pcz = getChunkCoord(Math.floor(player.position.z));
-  const rd = CONFIG.RENDER_DISTANCE;
+  const pcx = Math.floor(player.x / CHUNK_SIZE);
+  const pcz = Math.floor(player.z / CHUNK_SIZE);
 
-  // 加载视野内的区块
-  for (let dx = -rd; dx <= rd; dx++) {
-    for (let dz = -rd; dz <= rd; dz++) {
-      if (dx * dx + dz * dz > (rd + 0.5) * (rd + 0.5)) continue;
-      ensureChunk(pcx + dx, pcz + dz);
+  // Load chunks in range
+  for (let dx = -RENDER_DISTANCE; dx <= RENDER_DISTANCE; dx++) {
+    for (let dz = -RENDER_DISTANCE; dz <= RENDER_DISTANCE; dz++) {
+      if (dx * dx + dz * dz > RENDER_DISTANCE * RENDER_DISTANCE) continue;
+      const cx = pcx + dx;
+      const cz = pcz + dz;
+      const key = chunkKey(cx, cz);
+      if (!world[key]) {
+        getChunk(cx, cz);
+        rebuildChunkMesh(cx, cz);
+      }
     }
   }
 
-  // 构建/更新脏区块的网格
-  let rebuilt = 0;
-  for (const [key, chunk] of chunks) {
+  // Unload far chunks
+  for (const key in chunks) {
     const [cx, cz] = key.split(',').map(Number);
-    const dist = Math.max(Math.abs(cx - pcx), Math.abs(cz - pcz));
-
-    if (dist > rd + 1) {
-      // 卸载远区块
-      if (chunk.mesh) {
-        scene.remove(chunk.mesh);
-        chunk.mesh.geometry.dispose();
-        chunk.mesh = null;
+    const dx = cx - pcx;
+    const dz = cz - pcz;
+    if (dx * dx + dz * dz > (RENDER_DISTANCE + 2) * (RENDER_DISTANCE + 2)) {
+      if (chunks[key]) {
+        scene.remove(chunks[key]);
+        chunks[key].geometry.dispose();
+        chunks[key].material.dispose();
+        delete chunks[key];
       }
-      chunks.delete(key);
-      continue;
-    }
-
-    if (chunk.dirty && rebuilt < 3) { // 每帧最多重建3个区块
-      if (chunk.mesh) {
-        scene.remove(chunk.mesh);
-        chunk.mesh.geometry.dispose();
+      if (waterChunks[key]) {
+        scene.remove(waterChunks[key]);
+        waterChunks[key].geometry.dispose();
+        waterChunks[key].material.dispose();
+        delete waterChunks[key];
       }
-      chunk.mesh = buildChunkMesh(cx, cz, chunk.data);
-      if (chunk.mesh) {
-        chunk.mesh.castShadow = true;
-        chunk.mesh.receiveShadow = true;
-        scene.add(chunk.mesh);
-      }
-      chunk.dirty = false;
-      rebuilt++;
+      delete world[key];
     }
   }
 }
 
 // ============================================================
-// 找到玩家出生点 (确保在地面上方)
+// GAME LOOP
 // ============================================================
-function findSpawnPoint() {
-  const x = 8, z = 8;
-  for (let y = CONFIG.WORLD_HEIGHT - 1; y > 0; y--) {
-    if (getBlock(x, y, z) !== BLOCK.AIR && getBlock(x, y, z) !== BLOCK.WATER) {
-      player.position.set(x + 0.5, y + 2, z + 0.5);
-      return;
-    }
-  }
-  player.position.set(x + 0.5, 30, z + 0.5);
-}
+let lastTime = 0;
+let waterAnimTime = 0;
 
-// ============================================================
-// 游戏循环
-// ============================================================
-function gameLoop() {
+function gameLoop(timestamp) {
   requestAnimationFrame(gameLoop);
 
-  const dt = clock.getDelta();
+  const dt = Math.min((timestamp - lastTime) / 1000, 0.1);
+  lastTime = timestamp;
 
-  if (isLocked) {
-    updatePhysics(dt);
+  if (!gameStarted) return;
+
+  updateFPS();
+
+  if (!paused) {
+    updatePlayer(dt);
+    updateDayNight(dt);
     updateChunks();
-    updateCoords();
+
+    // Update mobs
+    for (const mob of mobs) mob.update(dt);
+    mobs = mobs.filter(m => !m.dead);
+
+    // Spawn mobs periodically
+    mobSpawnTimer += dt;
+    if (mobSpawnTimer > 10) {
+      spawnMobs();
+      mobSpawnTimer = 0;
+    }
+
+    // Break progress
+    if (mouseDown.left && !inventoryOpen) {
+      tryBreakBlock();
+    }
+
+    // Minimap update (every 30 frames)
+    if (frameCount % 30 === 0) updateMinimap();
+
+    // Water animation
+    waterAnimTime += dt;
+    for (const key in waterChunks) {
+      if (waterChunks[key]) {
+        waterChunks[key].position.y = Math.sin(waterAnimTime * 2) * 0.05;
+      }
+    }
   }
 
   renderer.render(scene, camera);
 }
 
 // ============================================================
-// 窗口大小处理
+// WINDOW RESIZE
 // ============================================================
-function onResize() {
+window.addEventListener('resize', () => {
   camera.aspect = window.innerWidth / window.innerHeight;
   camera.updateProjectionMatrix();
   renderer.setSize(window.innerWidth, window.innerHeight);
-}
-window.addEventListener('resize', onResize);
+});
 
 // ============================================================
-// 主初始化
+// START GAME
 // ============================================================
-async function main() {
-  const loadBar = document.getElementById('load-bar');
-  const loadText = document.getElementById('load-text');
+function startGame() {
+  document.getElementById('start-screen').style.display = 'none';
+  document.getElementById('loading').classList.add('open');
 
-  loadText.textContent = '初始化场景...';
-  loadBar.style.width = '10%';
-  await sleep(50);
-
-  initScene();
-
-  loadText.textContent = '生成地形区块...';
-  loadBar.style.width = '30%';
-  await sleep(50);
-
-  // 预生成出生点周围区块
-  const spawnCX = getChunkCoord(8);
-  const spawnCZ = getChunkCoord(8);
-  for (let dx = -2; dx <= 2; dx++) {
-    for (let dz = -2; dz <= 2; dz++) {
-      ensureChunk(spawnCX + dx, spawnCZ + dz);
+  // Generate initial chunks
+  const loadSteps = [];
+  for (let dx = -RENDER_DISTANCE; dx <= RENDER_DISTANCE; dx++) {
+    for (let dz = -RENDER_DISTANCE; dz <= RENDER_DISTANCE; dz++) {
+      if (dx * dx + dz * dz > RENDER_DISTANCE * RENDER_DISTANCE) continue;
+      loadSteps.push([dx, dz]);
     }
   }
 
-  loadText.textContent = '构建地形网格...';
-  loadBar.style.width = '50%';
-  await sleep(50);
+  let step = 0;
+  const totalSteps = loadSteps.length;
 
-  // 构建初始区块网格
-  for (const [key, chunk] of chunks) {
-    const [cx, cz] = key.split(',').map(Number);
-    chunk.mesh = buildChunkMesh(cx, cz, chunk.data);
-    if (chunk.mesh) {
-      chunk.mesh.castShadow = true;
-      chunk.mesh.receiveShadow = true;
-      scene.add(chunk.mesh);
+  function loadStep() {
+    if (step >= totalSteps) {
+      finishLoading();
+      return;
     }
-    chunk.dirty = false;
+
+    const [dx, dz] = loadSteps[step];
+    const cx = dx;
+    const cz = dz;
+    getChunk(cx, cz);
+    rebuildChunkMesh(cx, cz);
+
+    step++;
+    const pct = Math.floor((step / totalSteps) * 100);
+    document.getElementById('loading-fill').style.width = pct + '%';
+    document.getElementById('loading-text').textContent = `Generating chunk ${step}/${totalSteps}...`;
+
+    if (step % 3 === 0) {
+      setTimeout(loadStep, 10);
+    } else {
+      loadStep();
+    }
   }
 
-  loadText.textContent = '创建文字墙...';
-  loadBar.style.width = '70%';
-  await sleep(50);
-
-  buildBAOBAOWall();
-
-  loadText.textContent = '设置控制...';
-  loadBar.style.width = '85%';
-  await sleep(50);
-
-  findSpawnPoint();
-  initControls();
-  initHUD();
-
-  loadText.textContent = '准备就绪！';
-  loadBar.style.width = '100%';
-  await sleep(300);
-
-  document.getElementById('loading').style.display = 'none';
-  document.getElementById('overlay').style.display = 'flex';
-
-  gameLoop();
+  loadStep();
 }
 
-function sleep(ms) { return new Promise(r => setTimeout(r, ms)); }
+function finishLoading() {
+  // Try to load saved game
+  const loaded = loadGame();
+  if (!loaded) {
+    player.x = 8;
+    player.z = 8;
+    player.y = getTerrainHeight(8, 8) + 3;
+    player.inventory = new Array(36).fill(null);
+    // Give starting items
+    addToInventory(B.OAK_LOG, 10);
+    addToInventory(B.COBBLESTONE, 20);
+    addToInventory(B.TORCH, 8);
+  }
 
-// 启动
-main().catch(console.error);
+  generateClouds();
+  spawnMobs();
+  updateHotbar();
+
+  document.getElementById('loading').classList.remove('open');
+  gameStarted = true;
+  lastTime = performance.now();
+
+  renderer.domElement.requestPointerLock();
+  requestAnimationFrame(gameLoop);
+}
 </script>
 </body>
 </html>
